@@ -11,6 +11,7 @@ jobs:
         # os: [macOS-latest, ubuntu-latest]
 
     steps:
+    - uses: actions/checkout@v1
     - name: Install Perl Stuff
       run: |
         brew install gd
@@ -21,7 +22,9 @@ jobs:
         cpanm --installdeps Config::Tiny
         cpanm --installdeps File::stat
         cpanm --installdeps Geo::ShapeFile
-        cpanm --force --installdeps Archive::Zip
-        cpanm -v --force --installdeps PAR
-        cpanm -v --installdeps PAR::Packer
+        cpanm --force --installdeps PAR
+        cpanm --installdeps PAR::Packer
         perl ./test.pl
+        which pp
+        pp -o test ./test.pl
+        ./test
