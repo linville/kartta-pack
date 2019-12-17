@@ -17,6 +17,6 @@ jobs:
         /usr/local/bin/cpanm GD
         echo $PATH
     - name: More Perl Stuff
-          run: |
-            /usr/local/bin/cpanm GD
-            echo $PATH
+      run: |
+        /usr/local/bin/cpanm GD
+        echo $PATH
