@@ -16,9 +16,11 @@ jobs:
         brew install gd
         brew install pkg-config
         brew install cpanm
-        cpanm -v --installdeps GD
-        cpanm -v --installdeps POSIX
-        cpanm -v --installdeps Config::Tiny
-        cpanm -v --installdeps File::stat
-        cpanm -v --installdeps Geo::ShapeFile
+        cpanm --installdeps GD
+        cpanm --installdeps POSIX
+        cpanm --installdeps Config::Tiny
+        cpanm --installdeps File::stat
+        cpanm --installdeps Geo::ShapeFile
+        cpanm -v --installdeps PAR
+        cpanm -v --installdeps PAR::Packer
         perl ./test.pl
