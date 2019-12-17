@@ -14,5 +14,5 @@ jobs:
     - name: Install Perl Stuff
       run: |
         curl -L https://cpanmin.us | perl - App::cpanminus --sudo
-        cpanm GD
+        /usr/local/bin/cpanm GD
         
