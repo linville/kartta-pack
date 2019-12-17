@@ -13,10 +13,6 @@ jobs:
     steps:
     - name: Install Perl Stuff
       run: |
-        curl -L https://cpanmin.us | perl - App::cpanminus --sudo
-        /usr/local/bin/cpanm GD
         echo $PATH
-    - name: More Perl Stuff
-      run: |
+        curl -L https://cpanmin.us | perl - App::cpanminus -v --sudo
         /usr/local/bin/cpanm GD
-        echo $PATH
