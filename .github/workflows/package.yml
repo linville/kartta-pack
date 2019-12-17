@@ -16,15 +16,14 @@ jobs:
       run: |
         brew install gd
         brew install pkg-config
-        brew install perl
         brew install cpanm
-        cpanm --installdeps GD
-        cpanm --installdeps POSIX
-        cpanm --installdeps Config::Tiny
-        cpanm --installdeps File::stat
-        cpanm --installdeps Geo::ShapeFile
-        cpanm --force --installdeps PAR
-        cpanm --installdeps PAR::Packer
+        cpanm --sudo --installdeps GD
+        cpanm --sudo --installdeps POSIX
+        cpanm --sudo --installdeps Config::Tiny
+        cpanm --sudo --installdeps File::stat
+        cpanm --sudo --installdeps Geo::ShapeFile
+        cpanm --sudo --force --installdeps PAR
+        cpanm --sudo --installdeps PAR::Packer
         perl ./test.pl
         which pp
         pp -o test ./test.pl
