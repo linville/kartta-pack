@@ -21,6 +21,7 @@ jobs:
         cpanm --installdeps Config::Tiny
         cpanm --installdeps File::stat
         cpanm --installdeps Geo::ShapeFile
+        cpanm --force --installdeps Archive::Zip
         cpanm -v --installdeps PAR
         cpanm -v --installdeps PAR::Packer
         perl ./test.pl
