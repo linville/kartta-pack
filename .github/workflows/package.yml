@@ -13,5 +13,6 @@ jobs:
     steps:
     - name: Install Perl Stuff
       run: |
+        brew install pkg-config
         brew install cpanm
         cpanm --installdeps GD
