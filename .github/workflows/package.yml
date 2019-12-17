@@ -13,6 +13,6 @@ jobs:
     steps:
     - name: Install Perl Stuff
       run: |
-        curl -L http://cpanmin.us | perl - --self-upgrade
+        curl -L https://cpanmin.us | perl - App::cpanminus --sudo
         cpanm GD
         
