@@ -19,9 +19,9 @@ jobs:
         perl -V
         brew install pkg-config
         curl -L https://cpanmin.us | perl - App::cpanminus -v
-        /usr/local/Cellar/perl/5.30.0/bin/cpanm --info
+        export PATH="$PATH:/usr/local/Cellar/perl/5.30.0/bin/"
+        cpanm --info
         cpanm -v --installdeps Config::Tiny
-        which cpanm
         perl ./test.pl
         which pp
         pp -o test ./test.pl
