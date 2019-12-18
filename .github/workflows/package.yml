@@ -14,18 +14,19 @@ jobs:
     - uses: actions/checkout@v1
     - name: Install Perl Stuff
       run: |
-        brew install gd
         brew install pkg-config
+        brew install realpath
+        brew install gd
         brew install cpanm
+        export PATH="$PATH:`realpath cpanm`"
         cpanm GD
         cpanm POSIX
         cpanm Config::Tiny
         cpanm File::stat
         cpanm Geo::ShapeFile
         cpanm -f PAR
-        cpanm -v PAR::Packer
+        cpanm PAR::Packer
         perl ./test.pl
-        env
         brew link pp
         which pp
         pp -o test ./test.pl
