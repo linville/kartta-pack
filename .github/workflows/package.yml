@@ -15,7 +15,7 @@ jobs:
     - name: Install Perl Stuff
       run: |
         brew install pkg-config
-        curl -L https://cpanmin.us | perl - App::cpanminus --sudo --self-upgrade
+        curl -L https://cpanmin.us | perl - App::cpanminus -v --sudo --self-upgrade
         cpanm -v --installdeps Config::Tiny
         cpanm --info
         which cpanm
