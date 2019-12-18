@@ -14,16 +14,14 @@ jobs:
     - uses: actions/checkout@v1
     - name: Install Perl Stuff
       run: |
+        env
+        which perl
+        perl -V
         brew install pkg-config
-        curl -L https://cpanmin.us | perl - App::cpanminus -v --sudo --self-upgrade
+        curl -L https://cpanmin.us | perl - App::cpanminus -v --self-upgrade
         cpanm -v --installdeps Config::Tiny
         cpanm --info
         which cpanm
-        which perl
-        perl -V
-        brew config
-        brew info perl
-        env
         perl ./test.pl
         which pp
         pp -o test ./test.pl
