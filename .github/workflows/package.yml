@@ -21,7 +21,6 @@ jobs:
         which cpanm
         which perl
         brew config
-        brew doctor
         env
         perl ./test.pl
         which pp
