@@ -26,6 +26,7 @@ jobs:
         cpanm -v PAR::Packer
         perl ./test.pl
         env
+        brew link pp
         which pp
         pp -o test ./test.pl
         ./test
