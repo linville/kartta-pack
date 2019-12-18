@@ -15,11 +15,10 @@ jobs:
     - name: Install Perl Stuff
       run: |
         env
-        which perl
-        perl -V
         brew install pkg-config
-        curl -L https://cpanmin.us | perl - App::cpanminus -v
-        export PATH="$PATH:/usr/local/Cellar/perl/5.30.0/bin/"
+        curl -L https://cpanmin.us | perl - -l ~/perl5 App::cpanminus local::lib
+        eval `perl -I ~/perl5/lib/perl5 -Mlocal::lib`
+        env
         cpanm --info
         cpanm -v --installdeps Config::Tiny
         perl ./test.pl
