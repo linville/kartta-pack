@@ -18,9 +18,9 @@ jobs:
         which perl
         perl -V
         brew install pkg-config
-        curl -L https://cpanmin.us | perl - App::cpanminus -v --self-upgrade
+        curl -L https://cpanmin.us | perl - App::cpanminus -v
+        /usr/local/Cellar/perl/5.30.0/bin/cpanm --info
         cpanm -v --installdeps Config::Tiny
-        cpanm --info
         which cpanm
         perl ./test.pl
         which pp
