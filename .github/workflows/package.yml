@@ -20,7 +20,9 @@ jobs:
         cpanm --info
         which cpanm
         which perl
+        perl -V
         brew config
+        brew info perl
         env
         perl ./test.pl
         which pp
