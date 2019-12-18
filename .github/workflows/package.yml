@@ -22,7 +22,7 @@ jobs:
         cpanm Config::Tiny
         cpanm File::stat
         cpanm Geo::ShapeFile
-        cpanm PAR
+        cpanm -f PAR
         cpanm -v PAR::Packer
         perl ./test.pl
         env
