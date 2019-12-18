@@ -14,10 +14,18 @@ jobs:
     - uses: actions/checkout@v1
     - name: Install Perl Stuff
       run: |
+        brew install gd
         brew install pkg-config
         brew install cpanm
+        cpanm GD
+        cpanm POSIC
         cpanm Config::Tiny
+        cpanm File::stat
+        cpanm Geo::ShapeFile
+        cpanm PAR
+        cpanm -v PAR::Packer
         perl ./test.pl
+        env
         which pp
         pp -o test ./test.pl
         ./test
