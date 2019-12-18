@@ -1,4 +1,4 @@
 
-use GD
+use GD;
 use POSIX;
 use Config::Tiny;

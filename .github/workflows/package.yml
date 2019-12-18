@@ -18,7 +18,7 @@ jobs:
         brew install pkg-config
         brew install cpanm
         cpanm GD
-        cpanm POSIC
+        cpanm POSIX
         cpanm Config::Tiny
         cpanm File::stat
         cpanm Geo::ShapeFile
