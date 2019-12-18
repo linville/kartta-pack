@@ -20,7 +20,7 @@ jobs:
         eval `perl -I ~/perl5/lib/perl5 -Mlocal::lib`
         env
         cpanm --info
-        cpanm -v --installdeps Config::Tiny
+        cpanm Config::Tiny
         perl ./test.pl
         which pp
         pp -o test ./test.pl
