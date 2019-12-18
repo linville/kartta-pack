@@ -15,7 +15,7 @@ jobs:
     - name: Install Perl Stuff
       run: |
         brew install pkg-config
-        brew install realpath
+        brew install coreutils
         brew install gd
         brew install cpanm
         export PATH="$PATH:`realpath cpanm`"
