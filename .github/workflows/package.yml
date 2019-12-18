@@ -18,6 +18,8 @@ jobs:
         brew install cpanm
         cpanm --sudo --installdeps Config::Tiny
         cpanm --info
+        which cpanm
+        which perl
         perl ./test.pl
         which pp
         pp -o test ./test.pl
