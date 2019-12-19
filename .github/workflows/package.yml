@@ -31,7 +31,7 @@ jobs:
 #      uses: actions/upload-artifact@v1
 #      with:
 #        name: test-macos.tar.xz
-#        path: test.tar.xz test-linux
+#        path: test-macos.tar.xz
 
   build-linux:
     name: Package Linux
@@ -61,4 +61,4 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: test-linux.tar.xz
-        path: test.tar.xz test-linux
+        path: test-linux.tar.xz
