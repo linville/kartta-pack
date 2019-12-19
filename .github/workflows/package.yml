@@ -26,12 +26,12 @@ jobs:
 #      run: |
 #        eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
 #        pp -o test-macos ./test.pl
-#        tar cvJf test.tar.xz test-macos
+#        tar cvJf test-macos.tar.xz test-macos
 #    - name: Upload macOS Build
 #      uses: actions/upload-artifact@v1
 #      with:
 #        name: test-macos.tar.xz
-#        path: test.tar.xz test.pl
+#        path: test.tar.xz test-linux
 
   build-linux:
     name: Package Linux
@@ -56,9 +56,9 @@ jobs:
       run: |
         eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
         pp -o test-linux ./test.pl
-        tar cvJf test.tar.xz test-linux
+        tar cvJf test-linux.tar.xz test-linux
     - name: Upload Linux Build
       uses: actions/upload-artifact@v1
       with:
-        name: test.tar.xz
-        path: test.tar.xz test.pl
+        name: test-linux.tar.xz
+        path: test.tar.xz test-linux
