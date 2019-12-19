@@ -24,6 +24,7 @@ jobs:
     - name: Package
       shell: bash -v {0}
       run: |
+        perl -V
         which perl
         realpath perl
         realpath cpanm
