@@ -29,6 +29,8 @@ jobs:
   build-linux:
     name: Package Linux
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
     - name: Install Apt Items
       run: |
         sudo apt install cpanminus libgd-dev libgd-perl libperl-dev
