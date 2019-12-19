@@ -24,6 +24,8 @@ jobs:
     - name: Package
       shell: bash -v {0}
       run: |
+        which perl
+        realpath perl
         realpath cpanm
         export PATH="$PATH:`realpath cpanm`"
         echo $PATH
