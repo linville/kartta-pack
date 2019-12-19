@@ -24,8 +24,12 @@ jobs:
     - name: Package
       shell: bash -v {0}
       run: |
+        realpath cpanm
         export PATH="$PATH:`realpath cpanm`"
+        echo $PATH
         perl ./test.pl
         which pp
+        /usr/local/Cellar/perl/5.30.0/bin/pp -o test2 ./test.pl
+        ./test2
         pp -o test ./test.pl
         ./test
