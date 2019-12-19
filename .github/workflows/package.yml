@@ -3,39 +3,14 @@ name: Package
 on: [push]
 
 jobs:
-  package-macOS:
-    name: Package macOS
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Install Brew Items
-      run: |
-        brew install pkg-config gd cpanm
-    - name: Install Perl Modules
-      run: |
-        cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
-        cpanm GD
-        cpanm POSIX
-        cpanm Config::Tiny
-        cpanm File::stat
-        cpanm Geo::ShapeFile
-        cpanm -f PAR
-        cpanm PAR::Packer
-    - name: Package
-      shell: bash -v {0}
-      run: |
-        eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
-        pp -o test ./test.pl
-        ./test
-
-#  build-linux:
-#    name: Package Linux
-#    runs-on: ubuntu-latest
+#  package-macOS:
+#    name: Package macOS
+#    runs-on: macos-latest
 #    steps:
 #    - uses: actions/checkout@v1
-#    - name: Install Apt Items
+#    - name: Install Brew Items
 #      run: |
-#        sudo apt install cpanminus libgd-dev libgd-perl libperl-dev
+#        brew install pkg-config gd cpanm
 #    - name: Install Perl Modules
 #      run: |
 #        cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
@@ -44,11 +19,46 @@ jobs:
 #        cpanm Config::Tiny
 #        cpanm File::stat
 #        cpanm Geo::ShapeFile
-#        cpanm PAR
+#        cpanm -f PAR
 #        cpanm PAR::Packer
 #    - name: Package
 #      shell: bash -v {0}
 #      run: |
-#        eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
-#        pp -o test ./test.pl
-#        ./test
+#        eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+#        pp -o test-macos ./test.pl
+#        tar cvJf test.tar.xz test-macos
+#    - name: Upload macOS Build
+#      uses: actions/upload-artifact@v1
+#      with:
+#        name: test-macos.tar.xz
+#        path: test.tar.xz test.pl
+
+  build-linux:
+    name: Package Linux
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install Apt Items
+      run: |
+        sudo apt install cpanminus libgd-dev libgd-perl libperl-dev
+    - name: Install Perl Modules
+      run: |
+        cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+        cpanm GD
+        cpanm POSIX
+        cpanm Config::Tiny
+        cpanm File::stat
+        cpanm Geo::ShapeFile
+        cpanm PAR
+        cpanm PAR::Packer
+    - name: Package
+      shell: bash -v {0}
+      run: |
+        eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
+        pp -o test-linux ./test.pl
+        tar cvJf test.tar.xz test-linux
+    - name: Upload Linux Build
+      uses: actions/upload-artifact@v1
+      with:
+        name: test.tar.xz
+        path: test.tar.xz test.pl
