@@ -12,13 +12,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Install Perl Stuff
+    - name: Install Brew Items
       run: |
         brew install pkg-config
         brew install coreutils
         brew install gd
         brew install cpanm
-        export PATH="$PATH:`realpath cpanm`"
+    - name: Install Perl Modules
+      run: |
         cpanm GD
         cpanm POSIX
         cpanm Config::Tiny
@@ -26,8 +27,10 @@ jobs:
         cpanm Geo::ShapeFile
         cpanm -f PAR
         cpanm PAR::Packer
+    - name: Package
+      run: |
+        export PATH="$PATH:`realpath cpanm`"
         perl ./test.pl
-        brew link pp
         which pp
         pp -o test ./test.pl
         ./test
