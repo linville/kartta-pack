@@ -16,18 +16,13 @@ jobs:
       run: |
         brew install pkg-config
         brew install coreutils
-        brew install gd
         brew install cpanm
     - name: Install Perl Modules
       run: |
-        cpanm GD
-        cpanm POSIX
-        cpanm Config::Tiny
-        cpanm File::stat
-        cpanm Geo::ShapeFile
         cpanm -f PAR
         cpanm PAR::Packer
     - name: Package
+      shell: bash -v {0}
       run: |
         export PATH="$PATH:`realpath cpanm`"
         perl ./test.pl
