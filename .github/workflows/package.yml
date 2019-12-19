@@ -5,6 +5,7 @@ on: [push]
 jobs:
   package-macOS:
     name: Package macOS
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
     - name: Install Brew Items
