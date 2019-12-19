@@ -3,36 +3,47 @@ name: Package
 on: [push]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macOS-latest]
-        # os: [macOS-latest, ubuntu-latest]
+#  package-macOS:
+#    name: Package macOS
+#    steps:
+#    - uses: actions/checkout@v1
+#    - name: Install Brew Items
+#      run: |
+#        brew install pkg-config gd cpanm
+#    - name: Install Perl Modules
+#      run: |
+#        cpanm GD
+#        cpanm POSIX
+#        cpanm Config::Tiny
+#        cpanm File::stat
+#        cpanm Geo::ShapeFile
+#        cpanm -f PAR
+#        cpanm PAR::Packer
+#    - name: Package
+#      shell: bash -v {0}
+#      run: |
+#        export PATH="$PATH:/usr/local/Cellar/perl/5.30.0/bin/"
+#        pp -o test ./test.pl
+#        ./test
 
-    steps:
-    - uses: actions/checkout@v1
-    - name: Install Brew Items
+  build-linux:
+    name: Package Linux
+    runs-on: ubuntu-latest
+    - name: Install Apt Items
       run: |
-        brew install pkg-config
-        brew install coreutils
-        brew install cpanm
+        sudo apt install cpanminus libgd-dev libgd-perl libperl-dev
     - name: Install Perl Modules
       run: |
-        cpanm -f PAR
+        cpanm GD
+        cpanm POSIX
+        cpanm Config::Tiny
+        cpanm File::stat
+        cpanm Geo::ShapeFile
+        cpanm PAR
         cpanm PAR::Packer
     - name: Package
       shell: bash -v {0}
       run: |
-        perl -V
-        which perl
-        realpath perl
-        realpath cpanm
-        export PATH="$PATH:`realpath cpanm`"
-        echo $PATH
-        perl ./test.pl
-        which pp
-        /usr/local/Cellar/perl/5.30.0/bin/pp -o test2 ./test.pl
-        ./test2
+        eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
         pp -o test ./test.pl
         ./test
