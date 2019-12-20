@@ -54,7 +54,7 @@ jobs:
       shell: bash -v {0}
       run: |
         eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
-        pp -x -l Xpm -l bz2 -l freetype -l gd -l jpeg -l lzma -l png16 -l tiff -l zlib1 -o test-linux ./test.pl
+        pp -x -l Xpm -l bz2 -l freetype -l gd -l jpeg -l lzma -l png16 -l tiff -o test-linux ./test.pl
     - name: Upload Linux Build
       uses: actions/upload-artifact@v1
       with:
