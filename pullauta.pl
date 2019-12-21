@@ -1075,7 +1075,7 @@ if ( $command eq 'dxfmerge'||  $command eq 'merge' ) {
 
     use File::stat;
 
-    system( 'dir ' . $batchoutfolderwin . '\*.dxf /b > dxflist.txt' );
+    system( 'ls ' . $batchoutfolderwin . '\*.dxf /b > dxflist.txt' );
 
     open( SISAAN, "<dxflist.txt" );
     @dxflist = <SISAAN>;
@@ -1312,7 +1312,7 @@ if ( $command eq 'pngmerge' || $command eq 'pngmergedepr' ) {
     use GD;
     use File::stat;
 
-    system( 'dir ' . $batchoutfolderwin . '\*.png /b > pnglist.txt' );
+    system( 'ls ' . $batchoutfolderwin . '\*.png /b > pnglist.txt' );
 
     open( SISAAN, "<pnglist.txt" );
     @pnglist = <SISAAN>;
@@ -1466,7 +1466,7 @@ if ( $command eq 'pngmergevege' ) {
     use GD;
     use File::stat;
 
-    system( 'dir ' . $batchoutfolderwin . '\*_vege.png /b > pnglist.txt' );
+    system( 'ls ' . $batchoutfolderwin . '\*_vege.png /b > pnglist.txt' );
 
     open( SISAAN, "<pnglist.txt" );
     @pnglist = <SISAAN>;
@@ -1620,7 +1620,7 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
     mkdir $batchoutfolder;
 
     unlink "ziplist$thread.txt";
-    system( 'dir ' . $lazfolder . '*.zip /b > ziplist' . $thread . '.txt' );
+    system( 'ls ' . $lazfolder . '*.zip > ziplist' . $thread . '.txt' );
 
     open( SISAAN, "<ziplist" . $thread . ".txt" );
     @ziplist = <SISAAN>;
@@ -1643,10 +1643,10 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
     unlink "lazlist$thread.txt";
 
-    print "\ndir \*.laz\n";
-    system( 'dir ' . $lazfolder . '*.laz /b > lazlist' . $thread . '.txt' );
-    print "\ndir \*.las\n";
-    system( 'dir ' . $lazfolder . '*.las /b >> lazlist' . $thread . '.txt' );
+    print "\ls \*.laz\n";
+    system( 'ls ' . $lazfolder . '*.laz > lazlist' . $thread . '.txt' );
+    print "\nls \*.las\n";
+    system( 'ls ' . $lazfolder . '*.las >> lazlist' . $thread . '.txt' );
 
     open( SISAAN, "<lazlist$thread.txt" );
     @lazlist = <SISAAN>;
@@ -1803,19 +1803,19 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
             #print "filecopy ";
 
-            system( "copy pullautus$thread.png "
+            system( "cp pullautus$thread.png "
                   . $batchoutfolderwin . "\\"
                   . $laz
                   . '.png /Y' );
-            system( "copy pullautus$thread.pgw "
+            system( "cp pullautus$thread.pgw "
                   . $batchoutfolderwin . "\\"
                   . $laz
                   . '.pgw /Y' );
-            system( "copy pullautus_depr$thread.png "
+            system( "cp pullautus_depr$thread.png "
                   . $batchoutfolderwin . "\\"
                   . $laz
                   . '_depr.png /Y' );
-            system( "copy pullautus_depr$thread.pgw "
+            system( "cp pullautus_depr$thread.pgw "
                   . $batchoutfolderwin . "\\"
                   . $laz
                   . '_depr.pgw /Y' );
@@ -2009,8 +2009,8 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 				}
 			
             if ( $savetempfolders == 1 ) {
-                system "md \"temp_" . $laz . "_dir\"";
-                system "copy /Y temp$thread\\\*\.\* \"temp_" . $laz
+                system "mkdir \"temp_" . $laz . "_dir\"";
+                system "cp temp$thread\\\*\.\* \"temp_" . $laz
                   . "_dir\\\"";
             }
 
