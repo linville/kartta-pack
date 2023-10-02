@@ -4,6 +4,11 @@
 use GD;
 use POSIX;
 use Config::Tiny;
+use File::Spec;
+use File::Basename;
+use File::Touch;
+use File::Copy;
+use IPC::System::Simple qw(run capture);
 
 $ver = '20190203';
 
@@ -236,22 +241,22 @@ zoffset=0
 $Config = Config::Tiny->new;
 $Config = Config::Tiny->read('pullauta.ini');
 
-$scalefactor= 1*$Config->{_}->{scalefactor};
-if($scalefactor == 0){
-$scalefactor=1;
+$scalefactor = 1 * $Config->{_}->{scalefactor};
+if ( $scalefactor == 0 ) {
+    $scalefactor = 1;
 }
-$mapant=1* $Config->{_}->{croptokm};
-$formlineaddition=1*$Config->{_}->{formlineaddition};
-if($formlineaddition==0){$formlineaddition=13;}
+$mapant           = 1 * $Config->{_}->{croptokm};
+$formlineaddition = 1 * $Config->{_}->{formlineaddition};
+if ( $formlineaddition == 0 ) { $formlineaddition = 13; }
 
-$minimumgap=1*$Config->{_}->{minimumgap};
-if($minimumgap==0){$minimumgap=30;}
+$minimumgap = 1 * $Config->{_}->{minimumgap};
+if ( $minimumgap == 0 ) { $minimumgap = 30; }
 
-$basemapcontours=1*$Config->{_}->{basemapinterval};
+$basemapcontours = 1 * $Config->{_}->{basemapinterval};
 
-$med = $Config->{_}->{medianboxsize};
-$med2 = $Config->{_}->{medianboxsize2};
-$groundboxsize = $Config->{_}->{groundboxsize};
+$med             = $Config->{_}->{medianboxsize};
+$med2            = $Config->{_}->{medianboxsize2};
+$groundboxsize   = $Config->{_}->{groundboxsize};
 $greendetectsize = $Config->{_}->{greendetectsize};
 
 $water     = $Config->{_}->{waterclass};
@@ -263,7 +268,7 @@ if ( $waterele eq '' ) { $waterele = -999999; }
 $detectbuildings = $Config->{_}->{detectbuildings};
 $detectbuildings = 1 * $detectbuildings;
 
-$buildingcolor= $Config->{_}->{buildingcolor};
+$buildingcolor = $Config->{_}->{buildingcolor};
 
 $savetempfiles   = $Config->{_}->{savetempfiles};
 $savetempfolders = $Config->{_}->{savetempfolders};
@@ -285,12 +290,12 @@ $lightgreenlimit = $Config->{_}->{lightgreenlimit};
 $darkgreenlimit  = $Config->{_}->{darkgreenlimit};
 $dotsize         = $Config->{_}->{greendotsize};
 
-$gfactor     = $Config->{_}->{gfactor};
-$yfactor     = $Config->{_}->{yfactor};
-$wfactor     = $Config->{_}->{wfactor};
-$yellowlimit = $Config->{_}->{yellowlimit};
-$fivegreen   = $Config->{_}->{fivegreens};
-$zoff   = $Config->{_}->{zoffset};
+$gfactor       = $Config->{_}->{gfactor};
+$yfactor       = $Config->{_}->{yfactor};
+$wfactor       = $Config->{_}->{wfactor};
+$yellowlimit   = $Config->{_}->{yellowlimit};
+$fivegreen     = $Config->{_}->{fivegreens};
+$zoff          = $Config->{_}->{zoffset};
 $indexcontours = $Config->{_}->{indexcontours};
 $indexcontours = 1 * $indexcontours;
 $mtkskip       = $Config->{_}->{mtkskiplayers};
@@ -341,20 +346,24 @@ if ( $formline > 0 ) { $indexcontours = 25; }
 $batch             = $Config->{_}->{batch};
 $batchoutfolder    = $Config->{_}->{batchoutfolder};
 $batchoutfolderwin = $batchoutfolder;
-$batchoutfolderwin =~ s/\//\\/g;
-$batchoutfolder    =~ s/\\/\//g;
+
+#$batchoutfolderwin =~ s/\//\\/g;
+#$batchoutfolder    =~ s/\\/\//g;
 
 $lazfolder = $Config->{_}->{lazfolder};
-$lazfolder =~ s/\//\\/g;
+
+#$lazfolder =~ s/\//\\/g;
 
 if ( $lazfolder ne '' ) {
     $lazfolder = $lazfolder . "/";
     $lazfolder =~ s/\\\\/\\/g;
 }
 
-$vegemode = 0;$Config->{_}->{vegemode};
+$vegemode = 0;
+$Config->{_}->{vegemode};
+
 #$vegemode = 1 * $vegemode;
-$proc     = $Config->{_}->{processes};
+$proc = $Config->{_}->{processes};
 
 $command = $ARGV[0];
 if ( $command eq ( 1 * $command ) && $command ne '' ) {
@@ -550,125 +559,157 @@ if ( $command eq 'groundfix' ) {
 
 if ( $command eq 'profile' ) {
     use POSIX;
-	
-	
-use GD;
 
-$xpix= 1*$ARGV[1];
-$ypix= 1* $ARGV[2];
-$tile= $ARGV[4];
+    use GD;
 
+    $xpix = 1 * $ARGV[1];
+    $ypix = 1 * $ARGV[2];
+    $tile = $ARGV[4];
 
-   $img = new GD::Image( 1000, 1000);
-  $wh = $img->colorAllocate( 255, 255, 255 );
-   $gr = $img->colorAllocate( 0,   180, 0 );
-   $br = $img->colorAllocate( 150,   77, 7 );
-      $last = $img->colorAllocate( 150,   0, 150 );
-         $flast= $img->colorAllocate( 250,   0, 0 );
-		 
-      $img2 = new GD::Image( 1000, 1000);
-  $wh = $img2->colorAllocate( 255, 255, 255 );
-   $gr = $img2->colorAllocate( 0,   180, 0 );
-   $br = $img2->colorAllocate(150,   77, 7);
-      $last = $img2->colorAllocate( 150,   0, 150 );
-         $flast= $img2->colorAllocate( 250,   0, 0 );   
-open(SISAAN,"<pullautus_depr".$tile.".pgw");
-@d=<SISAAN>;
-close SISAAN;
-$res=$d[0]*1;
-$x0=$d[4]*1;
-$y0=$d[5]*1;
+    $img   = new GD::Image( 1000, 1000 );
+    $wh    = $img->colorAllocate( 255, 255, 255 );
+    $gr    = $img->colorAllocate( 0,   180, 0 );
+    $br    = $img->colorAllocate( 150, 77,  7 );
+    $last  = $img->colorAllocate( 150, 0,   150 );
+    $flast = $img->colorAllocate( 250, 0,   0 );
 
+    $img2  = new GD::Image( 1000, 1000 );
+    $wh    = $img2->colorAllocate( 255, 255, 255 );
+    $gr    = $img2->colorAllocate( 0,   180, 0 );
+    $br    = $img2->colorAllocate( 150, 77,  7 );
+    $last  = $img2->colorAllocate( 150, 0,   150 );
+    $flast = $img2->colorAllocate( 250, 0,   0 );
+    open( SISAAN, "<pullautus_depr" . $tile . ".pgw" );
+    @d = <SISAAN>;
+    close SISAAN;
+    $res = $d[0] * 1;
+    $x0  = $d[4] * 1;
+    $y0  = $d[5] * 1;
 
-if( $ARGV[3] ne 'm'){
-$x=$xpix*$res+$x0;
-$y=$y0-$ypix*$res;
-}else{
-$x=$xpix;
-$y=$ypix;
-}
+    if ( $ARGV[3] ne 'm' ) {
+        $x = $xpix * $res + $x0;
+        $y = $y0 - $ypix * $res;
+    }
+    else {
+        $x = $xpix;
+        $y = $ypix;
+    }
 
-$z='';	$z2='';	
-$tempfolder='temp'.$tile.'/';
+    $z          = '';
+    $z2         = '';
+    $tempfolder = 'temp' . $tile . '/';
 
     open( SISAAN, "<" . $tempfolder . "xyztemp.xyz" );
-    
+
     while ( $rec = <SISAAN> ) {
-            @r = split( / /, $rec );
-### 
-		if($r[0]>$x -50 && $r[1]> $y -2.5 && $r[0]<$x +50 && $r[1]< $y+2.5)	{
-		if($z eq ''){
-		$z=$r[2];
-		}
-		if($r[3] ==2){
-		$c=$br;
-		}else{
-		$c=$gr;
-			if($r[4] ==$r[5]){
-			$c=$last;
-			if($r[4] ==1){
-			$c=$flast;
-			}
-			}
-		
-		}
-		 $img->setPixel( ($r[0] - $x+50)*10, 600-($r[2] - $z)*10 , $c );
-$img->setPixel( ($r[0] - $x+50)*10+1, 600-($r[2] - $z)*10 , $c );
-$img->setPixel( ($r[0] - $x+50)*10, 600-($r[2] - $z)*10+1 , $c );
-$img->setPixel( ($r[0] - $x+50)*10+1, 600-($r[2] - $z)*10 +1, $c );
-		 #print ''.(($r[0] - $x)*10).' '.( 600-($r[2] - $z)*10)."\n";
-		}
-###	
-		if($r[0]>$x -2.5 && $r[1]> $y -50 && $r[0]<$x +2.5 && $r[1]< $y+50)	{
-		if($z2 eq ''){
-		$z2=$r[2];
-		}
-		if($r[3] ==2){
-		$c=$br;
-		}else{
-		$c=$gr;
-			if($r[4] ==$r[5]){
-			$c=$last;
-			if($r[4] ==1){
-			$c=$flast;
-			}
-			}
-		
-		}
-		 $img2->setPixel( ($r[1] - $y+50)*10, 600-($r[2] - $z2)*10 , $c );
-		 $img2->setPixel( ($r[1] - $y+50)*10+1, 600-($r[2] - $z2)*10 , $c );
-		 		 $img2->setPixel( ($r[1] - $y+50)*10, 600-($r[2] - $z2)*10 +1, $c );
-				 		 $img2->setPixel( ($r[1] - $y+50)*10+1, 600-($r[2] - $z2)*10+1 , $c );
-		 #print ''.(($r[0] - $x)*10).' '.( 600-($r[2] - $z)*10)."\n";
-		}
+        @r = split( / /, $rec );
+###
+        if (   $r[0] > $x - 50
+            && $r[1] > $y - 2.5
+            && $r[0] < $x + 50
+            && $r[1] < $y + 2.5 )
+        {
+            if ( $z eq '' ) {
+                $z = $r[2];
+            }
+            if ( $r[3] == 2 ) {
+                $c = $br;
+            }
+            else {
+                $c = $gr;
+                if ( $r[4] == $r[5] ) {
+                    $c = $last;
+                    if ( $r[4] == 1 ) {
+                        $c = $flast;
+                    }
+                }
 
-	
-	}
-	close SISAAN;
+            }
+            $img->setPixel( ( $r[0] - $x + 50 ) * 10,
+                600 - ( $r[2] - $z ) * 10, $c );
+            $img->setPixel( ( $r[0] - $x + 50 ) * 10 + 1,
+                600 - ( $r[2] - $z ) * 10, $c );
+            $img->setPixel( ( $r[0] - $x + 50 ) * 10,
+                600 - ( $r[2] - $z ) * 10 + 1, $c );
+            $img->setPixel( ( $r[0] - $x + 50 ) * 10 + 1,
+                600 - ( $r[2] - $z ) * 10 + 1, $c );
 
-                $myImage = newFromPng GD::Image("pullautus_depr".$tile.".png");
-				 
-   $img->copyResized( $myImage, 0, 0, $xpix-70/$res, $ypix-70/$res, 200,200,70/$res*2, 70/$res*2 );
-  
-  $img->rectangle( 28, 92, 28+144, 92+17 , $br );
-	
-	open( ULOS, ">profile_WE.png" );
+            #print ''.(($r[0] - $x)*10).' '.( 600-($r[2] - $z)*10)."\n";
+        }
+###
+        if (   $r[0] > $x - 2.5
+            && $r[1] > $y - 50
+            && $r[0] < $x + 2.5
+            && $r[1] < $y + 50 )
+        {
+            if ( $z2 eq '' ) {
+                $z2 = $r[2];
+            }
+            if ( $r[3] == 2 ) {
+                $c = $br;
+            }
+            else {
+                $c = $gr;
+                if ( $r[4] == $r[5] ) {
+                    $c = $last;
+                    if ( $r[4] == 1 ) {
+                        $c = $flast;
+                    }
+                }
+
+            }
+            $img2->setPixel( ( $r[1] - $y + 50 ) * 10,
+                600 - ( $r[2] - $z2 ) * 10, $c );
+            $img2->setPixel( ( $r[1] - $y + 50 ) * 10 + 1,
+                600 - ( $r[2] - $z2 ) * 10, $c );
+            $img2->setPixel( ( $r[1] - $y + 50 ) * 10,
+                600 - ( $r[2] - $z2 ) * 10 + 1, $c );
+            $img2->setPixel( ( $r[1] - $y + 50 ) * 10 + 1,
+                600 - ( $r[2] - $z2 ) * 10 + 1, $c );
+
+            #print ''.(($r[0] - $x)*10).' '.( 600-($r[2] - $z)*10)."\n";
+        }
+
+    }
+    close SISAAN;
+
+    $myImage = newFromPng GD::Image( "pullautus_depr" . $tile . ".png" );
+
+    $img->copyResized(
+        $myImage, 0, 0,
+        $xpix - 70 / $res,
+        $ypix - 70 / $res,
+        200, 200,
+        70 / $res * 2,
+        70 / $res * 2
+    );
+
+    $img->rectangle( 28, 92, 28 + 144, 92 + 17, $br );
+
+    open( ULOS, ">profile_WE.png" );
     binmode ULOS;
     print ULOS $img->png;
     close ULOS;
 
-	     $tempimg = new GD::Image( 200, 200);
-	   $tempimg->copyResized( $myImage, 0, 0, $xpix-70/$res, $ypix-70/$res, 200,200,70/$res*2, 70/$res*2 );
-	     $tempimg2 = new GD::Image( 200, 200);
-	   $tempimg2 = $tempimg->copyRotate90();
-   $img2->copy( $tempimg2, 0, 0,0,0,200,200);
-  $img2->rectangle( 28, 92, 28+144, 92+17 , $br );
-	
-	open( ULOS, ">profile_SN.png" );
+    $tempimg = new GD::Image( 200, 200 );
+    $tempimg->copyResized(
+        $myImage, 0, 0,
+        $xpix - 70 / $res,
+        $ypix - 70 / $res,
+        200, 200,
+        70 / $res * 2,
+        70 / $res * 2
+    );
+    $tempimg2 = new GD::Image( 200, 200 );
+    $tempimg2 = $tempimg->copyRotate90();
+    $img2->copy( $tempimg2, 0, 0, 0, 0, 200, 200 );
+    $img2->rectangle( 28, 92, 28 + 144, 92 + 17, $br );
+
+    open( ULOS, ">profile_SN.png" );
     binmode ULOS;
     print ULOS $img2->png;
     close ULOS;
-	
+
 }
 if ( $command eq 'ground' ) {
     use GD;
@@ -713,7 +754,7 @@ if ( $command eq 'ground' ) {
 
     print "..";
 
-    $img = new GD::Image( floor( $xmax - $xmin ), floor( $ymax - $ymin ) );
+    $img   = new GD::Image( floor( $xmax - $xmin ), floor( $ymax - $ymin ) );
     $white = $img->colorAllocate( 255, 255, 255 );
     $black = $img->colorAllocate( 0,   0,   0 );
 
@@ -743,7 +784,6 @@ if ( $command eq 'ground' ) {
     close IMAGE;
     exit;
 }
-
 
 if ( $command eq 'ground2' ) {
     use GD;
@@ -787,41 +827,41 @@ if ( $command eq 'ground2' ) {
     close SISAAN;
 
     print "..";
-        open( SISAAN, "<" . $tempfolder . "/xyz2.xyz" );
-        @d = <SISAAN>;
-        close SISAAN;
+    open( SISAAN, "<" . $tempfolder . "/xyz2.xyz" );
+    @d = <SISAAN>;
+    close SISAAN;
 
-        @r1 = split( / /, $d[0] );
-        @r2 = split( / /, $d[1] );
-        $size   = $r2[1] - $r1[1];
-		print " $r2[1] - $r1[1] ";
-        $xstart = $r1[0];
-        $ystart = $r1[1];
-        $sxmax  = -9999999999;
-        $symax  = -9999999999;
-        foreach $rec (@d) {
-            @r = split( / /, $rec );
+    @r1   = split( / /, $d[0] );
+    @r2   = split( / /, $d[1] );
+    $size = $r2[1] - $r1[1];
+    print " $r2[1] - $r1[1] ";
+    $xstart = $r1[0];
+    $ystart = $r1[1];
+    $sxmax  = -9999999999;
+    $symax  = -9999999999;
 
-            $xyz[ floor( ( $r[0] - $xstart ) / $size ) ]
-              [ floor( ( $r[1] - $ystart ) / $size ) ] = 1 * $r[2];
-            if (   floor( ( $r[0] - $xstart ) / $size ) < 0
-                || floor( ( $r[1] - $ystart ) / $size ) < 0 )
-            {
-                print "error";
-                exit;
-            }
-            if ( $sxmax < floor( ( $r[0] - $xstart ) / $size ) ) {
-                $sxmax = floor( ( $r[0] - $xstart ) / $size );
-            }
-            if ( $symax < floor( ( $r[1] - $ystart ) / $size ) ) {
-                $symax = floor( ( $r[1] - $ystart ) / $size );
-            }
-            $c++;
+    foreach $rec (@d) {
+        @r = split( / /, $rec );
+
+        $xyz[ floor( ( $r[0] - $xstart ) / $size ) ]
+          [ floor( ( $r[1] - $ystart ) / $size ) ] = 1 * $r[2];
+        if (   floor( ( $r[0] - $xstart ) / $size ) < 0
+            || floor( ( $r[1] - $ystart ) / $size ) < 0 )
+        {
+            print "error";
+            exit;
         }
-        print "..". $tempfolder.' '.$size.'.';
-	
-	
-    $img = new GD::Image( floor( $xmax - $xmin ), floor( $ymax - $ymin ) );
+        if ( $sxmax < floor( ( $r[0] - $xstart ) / $size ) ) {
+            $sxmax = floor( ( $r[0] - $xstart ) / $size );
+        }
+        if ( $symax < floor( ( $r[1] - $ystart ) / $size ) ) {
+            $symax = floor( ( $r[1] - $ystart ) / $size );
+        }
+        $c++;
+    }
+    print ".." . $tempfolder . ' ' . $size . '.';
+
+    $img   = new GD::Image( floor( $xmax - $xmin ), floor( $ymax - $ymin ) );
     $white = $img->colorAllocate( 255, 255, 255 );
     $black = $img->colorAllocate( 0,   0,   0 );
 
@@ -831,33 +871,37 @@ if ( $command eq 'ground2' ) {
 
         @r = split( / /, $rec );
 
-		
-	            if ( $r[0] > $xmin && $r[1] > $ymin ) {
-			
-									$a=$xyz[ floor( ( $r[0] - $xmin ) / $size ) ][ floor( ( $r[1] - $ymin ) / $size) ];
-						$b=$xyz[ floor( ( $r[0] - $xmin ) / $size ) +1][ floor( ( $r[1] - $ymin ) / $size) ];
-						$c=$xyz[ floor( ( $r[0] - $xmin ) / $size ) ][ floor( ( $r[1] - $ymin ) / $size) +1];
-						$d=$xyz[ floor( ( $r[0] - $xmin ) / $size ) +1 ][ floor( ( $r[1] - $ymin ) / $size) +1];
+        if ( $r[0] > $xmin && $r[1] > $ymin ) {
 
-						$distx=($r[0] - $xmin ) / $size -floor( ( $r[0] - $xmin ) / $size );
-						$disty=( $r[1] - $ymin ) / $size -floor( ( $r[1] - $ymin ) / $size);
-						
-						$ab=$a*(1-$distx)+$b*$distx;
-						$cd=$c*(1-$distx)+$d*$distx;
-						
-						$thelele=$ab*(1-$disty)+$cd*$disty;
-						
-		
-        if ( $thelele < $r[2] +0.25) {
-            $img->line(
-                ( $r[0] - $xmin ),
-                ( $ymax - $r[1] ),
-                ( $r[0] - $xmin ),
-                ( $ymax - $r[1] ),
-                $black
-            );
+            $a = $xyz[ floor( ( $r[0] - $xmin ) / $size ) ]
+              [ floor( ( $r[1] - $ymin ) / $size ) ];
+            $b = $xyz[ floor( ( $r[0] - $xmin ) / $size ) + 1 ]
+              [ floor( ( $r[1] - $ymin ) / $size ) ];
+            $c = $xyz[ floor( ( $r[0] - $xmin ) / $size ) ]
+              [ floor( ( $r[1] - $ymin ) / $size ) + 1 ];
+            $d = $xyz[ floor( ( $r[0] - $xmin ) / $size ) + 1 ]
+              [ floor( ( $r[1] - $ymin ) / $size ) + 1 ];
+
+            $distx =
+              ( $r[0] - $xmin ) / $size - floor( ( $r[0] - $xmin ) / $size );
+            $disty =
+              ( $r[1] - $ymin ) / $size - floor( ( $r[1] - $ymin ) / $size );
+
+            $ab = $a * ( 1 - $distx ) + $b * $distx;
+            $cd = $c * ( 1 - $distx ) + $d * $distx;
+
+            $thelele = $ab * ( 1 - $disty ) + $cd * $disty;
+
+            if ( $thelele < $r[2] + 0.25 ) {
+                $img->line(
+                    ( $r[0] - $xmin ),
+                    ( $ymax - $r[1] ),
+                    ( $r[0] - $xmin ),
+                    ( $ymax - $r[1] ),
+                    $black
+                );
+            }
         }
-}
     }
     close SISAAN;
 
@@ -918,10 +962,10 @@ if ( $command eq 'blocks' ) {
     print "..";
     undef @d;
 
-    $img = new GD::Image( $xmax * 2, $ymax * 2 );
+    $img   = new GD::Image( $xmax * 2, $ymax * 2 );
     $white = $img->colorAllocate( 255, 255, 255 );
     $black = $img->colorAllocate( 0,   0,   0 );
-    $img2 = new GD::Image( $xmax * 2, $ymax * 2 );
+    $img2  = new GD::Image( $xmax * 2, $ymax * 2 );
     $white = $img2->colorAllocate( 255, 255, 255 );
     $black = $img2->colorAllocate( 0,   0,   0 );
     $img2->filledRectangle( 0, 0, $xmax * 2 + 1, $ymax * 2 + 1, $black );
@@ -936,8 +980,7 @@ if ( $command eq 'blocks' ) {
             && $r[3] != 9
             && $r[4] == 1
             && $r[5] == 1
-            && $r[2] > 2.0 +
-            $xyz[ floor( ( $r[0] - $xstartxyz ) / $size ) ]
+            && $r[2] > 2.0 + $xyz[ floor( ( $r[0] - $xstartxyz ) / $size ) ]
             [ floor( ( $r[1] - $ystartxyz ) / $size ) ] )
         {
 
@@ -1071,18 +1114,18 @@ if ( $command eq 'blocks' ) {
     exit;
 }
 
-if ( $command eq 'dxfmerge'||  $command eq 'merge' ) {
+if ( $command eq 'dxfmerge' || $command eq 'merge' ) {
 
     use File::stat;
 
-    system( 'ls ' . $batchoutfolderwin . '\*.dxf /b > dxflist.txt' );
+    @dxflist_with_dirs =
+      map { File::Spec->canonpath($_) } glob( $batchoutfolder . '/*.dxf' );
+    @dxflist = map { basename($_) } @dxflist_with_dirs;
+    $dxflist = join( " ", @dxflist_with_dirs );
 
-    open( SISAAN, "<dxflist.txt" );
-    @dxflist = <SISAAN>;
-    close(SISAAN);
 ## contours
-open( ULOS2, ">merged.dxf" );
-    open( ULOS, ">merged_contours.dxf" );
+    open( ULOS2, ">merged.dxf" );
+    open( ULOS,  ">merged_contours.dxf" );
     foreach $dx (@dxflist) {
         chomp($dx);
 
@@ -1099,19 +1142,20 @@ open( ULOS2, ">merged.dxf" );
                 if ( $headprinted eq '' ) {
                     $headout = $head;
                     print ULOS $headout;
-					print ULOS2 $headout;
+                    print ULOS2 $headout;
                     $headprinted = 1;
                 }
                 print ULOS 'POLYLINE';
                 print ULOS $d;
-				@plines=  split( /POLYLINE/, $d);
-				foreach $pl (@plines){
-				if($pl =~ /_intermed/){
-				}else{
-                print ULOS2 'POLYLINE';
-                print ULOS2 $pl;
-				}
-				}
+                @plines = split( /POLYLINE/, $d );
+                foreach $pl (@plines) {
+                    if ( $pl =~ /_intermed/ ) {
+                    }
+                    else {
+                        print ULOS2 'POLYLINE';
+                        print ULOS2 $pl;
+                    }
+                }
             }
         }
     }
@@ -1143,42 +1187,42 @@ open( ULOS2, ">merged.dxf" );
                 print ULOS $d;
                 print ULOS2 'POLYLINE';
                 print ULOS2 $d;
-				}
+            }
         }
     }
     print ULOS 'ENDSEC' . $footer;
     close ULOS;
 ### basemap
-if($basemapcontours > 0){
-    $headprinted = '';
-    open( ULOS, ">merged_basemap.dxf" );
-    foreach $dx (@dxflist) {
-        chomp($dx);
+    if ( $basemapcontours > 0 ) {
+        $headprinted = '';
+        open( ULOS, ">merged_basemap.dxf" );
+        foreach $dx (@dxflist) {
+            chomp($dx);
 
-        $dxf = $batchoutfolder . "/" . $dx;
-        if ( -e $dxf && ( $dxf =~ /\_basemap.dxf/i ) ) {
-            open( SISAAN, "<$dxf" );
-            @dxf = <SISAAN>;
-            close(SISAAN);
-            $d = join( '', @dxf );
-            if ( $d =~ /POLYLINE/ ) {
-                ( $head, $d )      = split( /POLYLINE/, $d, 2 );
-                ( $d,    $footer ) = split( /ENDSEC/,   $d, 2 );
+            $dxf = $batchoutfolder . "/" . $dx;
+            if ( -e $dxf && ( $dxf =~ /\_basemap.dxf/i ) ) {
+                open( SISAAN, "<$dxf" );
+                @dxf = <SISAAN>;
+                close(SISAAN);
+                $d = join( '', @dxf );
+                if ( $d =~ /POLYLINE/ ) {
+                    ( $head, $d )      = split( /POLYLINE/, $d, 2 );
+                    ( $d,    $footer ) = split( /ENDSEC/,   $d, 2 );
 
-                if ( $headprinted eq '' ) {
-                    print ULOS $headout;
-                    $headprinted = 1;
+                    if ( $headprinted eq '' ) {
+                        print ULOS $headout;
+                        $headprinted = 1;
+                    }
+                    print ULOS 'POLYLINE';
+                    print ULOS $d;
+                    print ULOS2 'POLYLINE';
+                    print ULOS2 $d;
                 }
-                print ULOS 'POLYLINE';
-                print ULOS $d;
-                print ULOS2 'POLYLINE';
-                print ULOS2 $d;
-				}
+            }
         }
+        print ULOS 'ENDSEC' . $footer;
+        close ULOS;
     }
-    print ULOS 'ENDSEC' . $footer;
-    close ULOS;
-	}
 #####
 ###
     $headprinted = '';
@@ -1204,7 +1248,7 @@ if($basemapcontours > 0){
                 print ULOS $d;
                 print ULOS2 'POLYLINE';
                 print ULOS2 $d;
-				}
+            }
         }
     }
     print ULOS 'ENDSEC' . $footer;
@@ -1234,7 +1278,7 @@ if($basemapcontours > 0){
                 print ULOS $d;
                 print ULOS2 'POLYLINE';
                 print ULOS2 $d;
-				}
+            }
         }
     }
     print ULOS 'ENDSEC' . $footer;
@@ -1265,7 +1309,7 @@ if($basemapcontours > 0){
                 print ULOS2 'POINT';
                 print ULOS2 $d;
 
-				}
+            }
         }
     }
     print ULOS 'ENDSEC' . $footer;
@@ -1299,24 +1343,27 @@ if($basemapcontours > 0){
     close ULOS;
     print ULOS2 'ENDSEC' . $footer;
     close ULOS2;
-	###
-	
-	if (   $command eq 'merge' ) {
-	$command = 'pngmergevege';
-	}else{
-    exit;
-}}
+    ###
+
+    if ( $command eq 'merge' ) {
+        $command = 'pngmergevege';
+    }
+    else {
+        exit;
+    }
+}
 
 if ( $command eq 'pngmerge' || $command eq 'pngmergedepr' ) {
 
     use GD;
     use File::stat;
 
-    system( 'ls ' . $batchoutfolderwin . '\*.png /b > pnglist.txt' );
+    @pnglist_with_dirs =
+      map { File::Spec->canonpath($_) } glob( $batchoutfolder . '/*.png' );
+    @pnglist = map { basename($_) } @pnglist_with_dirs;
+    $pnglist = join( " ", @pnglist_with_dirs );
 
-    open( SISAAN, "<pnglist.txt" );
-    @pnglist = <SISAAN>;
-    close(SISAAN);
+    @pnglistorig = @pnglist;
 
     $scale = 1 * $ARGV[1];
     if ( $scale == 0 ) {
@@ -1325,10 +1372,12 @@ if ( $command eq 'pngmerge' || $command eq 'pngmergedepr' ) {
 
     foreach $png (@pnglist) {
         chomp($png);
-		$png0=$png;
+        $png0 = $png;
         $png =~ s/\.png/\.pgw/;
 
+        print "$png\n";
         $png = $batchoutfolder . "/" . $png;
+
         if (
                -e $png
             && !( $png =~ /\_vege\.png/ )
@@ -1336,10 +1385,11 @@ if ( $command eq 'pngmerge' || $command eq 'pngmergedepr' ) {
                 || ( !( $png =~ /depr/ ) && $command eq 'pngmerge' ) )
           )
         {
-			$myImage = newFromPng GD::Image( $batchoutfolder . "/" . $png0, 1 );
+            print("in here\n");
+            $myImage = newFromPng GD::Image( $batchoutfolder . "/" . $png0, 1 );
 
             ( $width, $height ) = $myImage->getBounds();
-			
+
             open( SISAAN, "<$png" );
             @tfw = <SISAAN>;
             close(SISAAN);
@@ -1351,23 +1401,20 @@ if ( $command eq 'pngmerge' || $command eq 'pngmergedepr' ) {
             if ( $tfw[4] < $xmin || $xmin eq '' ) {
                 $xmin = 1 * $tfw[4];
             }
-            if ( $tfw[4] + $width* $res> $xmax || $xmax eq '' ) {
-                $xmax = 1 * $tfw[4] + $width* $res;
+            if ( $tfw[4] + $width * $res > $xmax || $xmax eq '' ) {
+                $xmax = 1 * $tfw[4] + $width * $res;
             }
             if ( $tfw[5] > $ymax || $ymax eq '' ) {
                 $ymax = 1 * $tfw[5];
             }
-            if ( $tfw[5]-$height *$res < $ymin || $ymin eq '' ) {
-                $ymin = 1 * $tfw[5]-$height *$res;
+            if ( $tfw[5] - $height * $res < $ymin || $ymin eq '' ) {
+                $ymin = 1 * $tfw[5] - $height * $res;
             }
         }
     }
 
-    open( SISAAN, "<pnglist.txt" );
-    @pnglist = <SISAAN>;
-    close(SISAAN);
-
-    $i = 0;
+    @pnglist = @pnglistorig;
+    $i       = 0;
     foreach $png (@pnglist) {
 
         chomp($png);
@@ -1391,14 +1438,13 @@ if ( $command eq 'pngmerge' || $command eq 'pngmergedepr' ) {
             $i++;
             if ( $i == 1 ) {
                 if ( $scale == 1 ) {
-                    $im = new GD::Image(
-                        ( $xmax - $xmin  ) / $res / $scale,
-                        ( $ymax - $ymin  ) / $res / $scale, 0 );
+                    print("creating image\n");
+                    $im = new GD::Image( ( $xmax - $xmin ) / $res / $scale,
+                        ( $ymax - $ymin ) / $res / $scale, 0 );
                 }
                 else {
-                    $im = new GD::Image(
-                        ( $xmax - $xmin ) / $res / $scale,
-                        ( $ymax - $ymin) / $res / $scale, 1 );
+                    $im = new GD::Image( ( $xmax - $xmin ) / $res / $scale,
+                        ( $ymax - $ymin ) / $res / $scale, 1 );
                 }
             }
 
@@ -1466,11 +1512,12 @@ if ( $command eq 'pngmergevege' ) {
     use GD;
     use File::stat;
 
-    system( 'ls ' . $batchoutfolderwin . '\*_vege.png /b > pnglist.txt' );
+    @pnglist_with_dirs =
+      map { File::Spec->canonpath($_) } glob( $batchoutfolder . '/*_vege.png' );
+    @pnglist = map { basename($_) } @pnglist_with_dirs;
+    $pnglist = join( " ", @pnglist_with_dirs );
 
-    open( SISAAN, "<pnglist.txt" );
-    @pnglist = <SISAAN>;
-    close(SISAAN);
+    @pnglistorig = @pnglist;
 
     $scale = 1 * $ARGV[1];
     if ( $scale == 0 ) {
@@ -1479,11 +1526,11 @@ if ( $command eq 'pngmergevege' ) {
 
     foreach $png (@pnglist) {
         chomp($png);
-		
-		    $myImage = newFromPng GD::Image( $batchoutfolder . "/" . $png, 1 );
 
-            ( $width, $height ) = $myImage->getBounds();
-			
+        $myImage = newFromPng GD::Image( $batchoutfolder . "/" . $png, 1 );
+
+        ( $width, $height ) = $myImage->getBounds();
+
         $png =~ s/\.png/\.pgw/;
 
         $png = $batchoutfolder . "/" . $png;
@@ -1499,21 +1546,19 @@ if ( $command eq 'pngmergevege' ) {
             if ( $tfw[4] < $xmin || $xmin eq '' ) {
                 $xmin = 1 * $tfw[4];
             }
-            if ( $tfw[4] + $width* $res> $xmax || $xmax eq '' ) {
-                $xmax = 1 * $tfw[4] + $width* $res;
+            if ( $tfw[4] + $width * $res > $xmax || $xmax eq '' ) {
+                $xmax = 1 * $tfw[4] + $width * $res;
             }
             if ( $tfw[5] > $ymax || $ymax eq '' ) {
                 $ymax = 1 * $tfw[5];
             }
-            if ( $tfw[5]-$height *$res < $ymin || $ymin eq '' ) {
-                $ymin = 1 * $tfw[5]-$height *$res;
+            if ( $tfw[5] - $height * $res < $ymin || $ymin eq '' ) {
+                $ymin = 1 * $tfw[5] - $height * $res;
             }
         }
     }
 
-    open( SISAAN, "<pnglist.txt" );
-    @pnglist = <SISAAN>;
-    close(SISAAN);
+    @pnglist = @pnglistorig;
 
     $i = 0;
     foreach $png (@pnglist) {
@@ -1532,14 +1577,12 @@ if ( $command eq 'pngmergevege' ) {
             $i++;
             if ( $i == 1 ) {
                 if ( $scale == 1 ) {
-                    $im = new GD::Image(
-                        ( $xmax - $xmin  ) / $res / $scale,
-                        ( $ymax - $ymin  ) / $res / $scale, 0 );
+                    $im = new GD::Image( ( $xmax - $xmin ) / $res / $scale,
+                        ( $ymax - $ymin ) / $res / $scale, 0 );
                 }
                 else {
-                    $im = new GD::Image(
-                        ( $xmax - $xmin ) / $res / $scale,
-                        ( $ymax - $ymin) / $res / $scale, 1 );
+                    $im = new GD::Image( ( $xmax - $xmin ) / $res / $scale,
+                        ( $ymax - $ymin ) / $res / $scale, 1 );
                 }
             }
 
@@ -1599,10 +1642,11 @@ $ymax
 }
 
 if ( $command eq '' && $batch == 1 && $proc > 1 ) {
+    print "\nstarting batch processing\n";
     for ( $i = 1 ; $i < $proc + 1 ; $i++ ) {
 
         # start independent shell window
-        system("start pullauta startthread $i");
+        system("pullauta startthread $i &");
     }
     exit;
 }
@@ -1619,17 +1663,11 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
     # batch process
     mkdir $batchoutfolder;
 
-    unlink "ziplist$thread.txt";
-    system( 'ls ' . $lazfolder . '*.zip > ziplist' . $thread . '.txt' );
+    @ziplist_with_dirs =
+      map { File::Spec->canonpath($_) } glob( $lazfolder . '/*.zip' );
+    @ziplist = map { basename($_) } @ziplist_with_dirs;
+    $ziplist = join( " ", @ziplist_with_dirs );
 
-    open( SISAAN, "<ziplist" . $thread . ".txt" );
-    @ziplist = <SISAAN>;
-    close(SISAAN);
-
-    $ziplist = $lazfolder . join( " " . $lazfolder, @ziplist );
-    $ziplist =~ s/\n//g;
-    $ziplist =~ s/\r//g;
-    $ziplist =~ s/\\/\//g;
     if ( $ziplist =~ /zip/i ) {
 
         #ok
@@ -1641,42 +1679,31 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
 ####
 
-    unlink "lazlist$thread.txt";
+    @lazlist_with_dirs = map { File::Spec->canonpath($_) }
+      glob( $lazfolder . '/*.laz ' . $lazfolder . '/*.las' );
+    @lazlist = map { basename($_) } @lazlist_with_dirs;
+    $lazlist = join( " ", @lazlist_with_dirs );
 
-    print "\ls \*.laz\n";
-    system( 'ls ' . $lazfolder . '*.laz > lazlist' . $thread . '.txt' );
-    print "\nls \*.las\n";
-    system( 'ls ' . $lazfolder . '*.las >> lazlist' . $thread . '.txt' );
-
-    open( SISAAN, "<lazlist$thread.txt" );
-    @lazlist = <SISAAN>;
-    close(SISAAN);
     $i = 0;
 
     foreach $laz (@lazlist) {
         chomp($laz);
         $i++;
+
         if ( -e $batchoutfolder . '/' . $laz . '.png' ) {
             print "skipping $laz" . '.png'
               . " it exists already in out folder.\n";
         }
         else {
+            # Create an empty png file to allow parallel processing to proceed
             print "$laz -> $laz" . ".png\n";
-            open( FOUT, ">$batchoutfolder" . '/' . $laz . '.png' );
-            close(FOUT);
+            touch( $batchoutfolder . '/' . $laz . '.png' );
 
-			unlink "header$thread.xyz";
-			system "las2txt -i $lazfolder$laz -header pound -keep_xy 0 0 0 0 -o header$thread.xyz";
-			if(-e "header$thread.xyz"){
-			# ok
-			}else{
-			print "\nlas2txt failed, trying old las2txt command line format...";
-			system "las2txt -i $lazfolder$laz -header pound -clip 0 0 0 0 -o header$thread.xyz";
-			}
-			
-            open( SISAAN, "<header$thread.xyz" );
-            @d = <SISAAN>;
-            close(SISAAN);
+            # Extract header information
+            @d =
+              capture( "las2txt -i  "
+                  . $lazfolder
+                  . "/$laz -header pound -keep_xy 0 0 0 0 -stdout" );
             foreach $rec (@d) {
 
                 chomp($rec);
@@ -1700,32 +1727,23 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
             $miny2 = $miny - 127;
             $maxx2 = $maxx + 127;
             $maxy2 = $maxy + 127;
-			if($zoff != 0){
-			$translate= " -translate_z ".(1*$zoff);
-			}
-			unlink "temp$thread.xyz";
-            system(
-"las2txt -i $lazfolder\*.laz $lazfolder\*.las -merged -o temp$thread.xyz -parse xyzcnri -inside $minx2 $miny2 $maxx2 $maxy2".$translate
-            );			
-						
-			if(-e "temp$thread.xyz"){
-			# new version worked
-			}else{
-			print "\new las2txt command failed, trying old command line format...";
-            system(
-"las2txt -i $lazfolder\*.laz $lazfolder\*.las -merged -o temp$thread.xyz -parse xyzcnri -clip $minx2 $miny2 $maxx2 $maxy2".$translate
-            );
-			}
-			
-			
+            if ( $zoff != 0 ) {
+                $translate = " -translate_z " . ( 1 * $zoff );
+            }
+
+            unlink "temp$thread.xyz";
+            run(
+"las2txt -i $lazlist -merged -o temp$thread.xyz -parse xyzcnri -inside $minx2 $miny2 $maxx2 $maxy2"
+                  . $translate );
+
             if ( $ziplist ne '' ) {
-                system("pullauta $thread temp$thread.xyz norender");
+                run("pullauta $thread temp$thread.xyz norender");
             }
             else {
-                system("pullauta $thread temp$thread.xyz");
+                run("pullauta $thread temp$thread.xyz");
             }
             if ( $ziplist ne '' ) {
-                system("pullauta $thread $ziplist");
+                run("pullauta $thread $ziplist");
             }
 
             #crop
@@ -1736,8 +1754,8 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
            #$im = new GD::Image($width-127*600/254*2+2,$height-127*600/254*2+2);
             $im = new GD::Image(
-                ( $maxx - $minx ) * 600 / 254/$scalefactor  + 2,
-                ( $maxy - $miny ) * 600 / 254/$scalefactor  + 2
+                ( $maxx - $minx ) * 600 / 254 / $scalefactor + 2,
+                ( $maxy - $miny ) * 600 / 254 / $scalefactor + 2
             );
 
             #$foo=($maxx-$minx)*600/254+2;
@@ -1768,8 +1786,8 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
             $im->copy(
                 $myImage,
-                -$dx * 600 / 254/$scalefactor ,
-                -$dy * 600 / 254/$scalefactor ,
+                -$dx * 600 / 254 / $scalefactor,
+                -$dy * 600 / 254 / $scalefactor,
                 0, 0, $width, $height
             );
 
@@ -1783,14 +1801,14 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
             $myImage = newFromPng GD::Image("pullautus_depr$thread.png");
 
             $im = new GD::Image(
-                ( $maxx - $minx ) * 600 / 254/$scalefactor  + 2,
-                ( $maxy - $miny ) * 600 / 254/$scalefactor  + 2
+                ( $maxx - $minx ) * 600 / 254 / $scalefactor + 2,
+                ( $maxy - $miny ) * 600 / 254 / $scalefactor + 2
             );
 
             $im->copy(
                 $myImage,
-                -$dx * 600 / 254/$scalefactor ,
-                -$dy * 600 / 254/$scalefactor ,
+                -$dx * 600 / 254 / $scalefactor,
+                -$dy * 600 / 254 / $scalefactor,
                 0, 0, $width, $height
             );
 
@@ -1803,57 +1821,59 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
             #print "filecopy ";
 
-            system( "cp pullautus$thread.png "
-                  . $batchoutfolderwin . "/"
-                  . $laz
-                  . '.png /Y' );
-            system( "cp pullautus$thread.pgw "
-                  . $batchoutfolderwin . "/"
-                  . $laz
-                  . '.pgw /Y' );
-            system( "cp pullautus_depr$thread.png "
-                  . $batchoutfolderwin . "/"
-                  . $laz
-                  . '_depr.png /Y' );
-            system( "cp pullautus_depr$thread.pgw "
-                  . $batchoutfolderwin . "/"
-                  . $laz
-                  . '_depr.pgw /Y' );
+            copy( "pullautus$thread.png",
+                $batchoutfolderwin . "/" . $laz . '.png' );
+            copy( "pullautus$thread.pgw",
+                $batchoutfolderwin . "/" . $laz . '.pgw' );
+            copy( "pullautus_depr$thread.png",
+                $batchoutfolderwin . "/" . $laz . '_depr.png' );
+            copy( "pullautus_depr$thread.pgw",
+                $batchoutfolderwin . "/" . $laz . '_depr.pgw' );
 
             #print "filecopy done!";
 
-            ## copy files form temp folder
+            ## copy files from temp folder
             if ( $savetempfiles == 1 ) {
 
-			 $myImage = newFromPng GD::Image("temp$thread/undergrowth.png");
+                $myImage = newFromPng GD::Image("temp$thread/undergrowth.png");
 
-            $im = new GD::Image(
-                ( $maxx - $minx ) * 600 / 254/$scalefactor  + 2,
-                ( $maxy - $miny ) * 600 / 254/$scalefactor  + 2
-            );
-    $white = $im->colorAllocate( 255, 255, 255 );
+                $im = new GD::Image(
+                    ( $maxx - $minx ) * 600 / 254 / $scalefactor + 2,
+                    ( $maxy - $miny ) * 600 / 254 / $scalefactor + 2
+                );
+                $white = $im->colorAllocate( 255, 255, 255 );
 
-    $im->filledRectangle( 0, 0, ( $maxx - $minx ) * 600 / 254/$scalefactor  + 3,
-                ( $maxy - $miny ) * 600 / 254/$scalefactor  + 3, $white );
-            $im->copy(
-                $myImage,
-                -$dx * 600 / 254/$scalefactor ,
-                -$dy * 600 / 254/$scalefactor ,
-                0, 0, $width, $height
-            );
+                $im->filledRectangle(
+                    0, 0,
+                    ( $maxx - $minx ) * 600 / 254 / $scalefactor + 3,
+                    ( $maxy - $miny ) * 600 / 254 / $scalefactor + 3, $white
+                );
+                $im->copy(
+                    $myImage,
+                    -$dx * 600 / 254 / $scalefactor,
+                    -$dy * 600 / 254 / $scalefactor,
+                    0, 0, $width, $height
+                );
 
-             open( OUT,">" . $batchoutfolderwin . "/" . $laz . '_undergrowth.png' );
-            binmode OUT;
+                open( OUT,
+                        ">"
+                      . $batchoutfolderwin . "/"
+                      . $laz
+                      . '_undergrowth.png' );
+                binmode OUT;
 
-            # Convert the image to PNG and print it on standard output
-            print OUT $im->png;
-            close OUT;
+                # Convert the image to PNG and print it on standard output
+                print OUT $im->png;
+                close OUT;
 
-			
-			open( OUT,">" . $batchoutfolderwin . "/" . $laz . '_undergrowth.pgw' );
-            print OUT @tfw;
-            close OUT;
-			
+                open( OUT,
+                        ">"
+                      . $batchoutfolderwin . "/"
+                      . $laz
+                      . '_undergrowth.pgw' );
+                print OUT @tfw;
+                close OUT;
+
                 $myImage = newFromPng GD::Image("temp$thread/vegetation.png");
                 ( $width, $height ) = $myImage->getBounds();
                 $im =
@@ -1901,8 +1921,7 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
                 &polylinedxfcrop;
 
-                open( OUT,
-                    ">" . $batchoutfolderwin . "/" . $laz . '_c2g.dxf' );
+                open( OUT, ">" . $batchoutfolderwin . "/" . $laz . '_c2g.dxf' );
                 print OUT $out;
                 close OUT;
 
@@ -1912,12 +1931,10 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
 
                 &polylinedxfcrop;
 
-                open( OUT,
-                    ">" . $batchoutfolderwin . "/" . $laz . '_c3g.dxf' );
+                open( OUT, ">" . $batchoutfolderwin . "/" . $laz . '_c3g.dxf' );
                 print OUT $out;
                 close OUT;
 
-				
                 open( SISAAN, "<temp$thread/contours03.dxf" );
                 @d = <SISAAN>;
                 close SISAAN;
@@ -1925,10 +1942,7 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
                 &polylinedxfcrop;
 
                 open( OUT,
-                        ">"
-                      . $batchoutfolderwin . "/"
-                      . $laz
-                      . '_contours03.dxf' );
+                    ">" . $batchoutfolderwin . "/" . $laz . '_contours03.dxf' );
                 print OUT $out;
                 close OUT;
 
@@ -1943,19 +1957,22 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
                 print OUT $out;
                 close OUT;
 
-				if(-e "temp$thread/formlines.dxf"){
-				 open( SISAAN, "<temp$thread/formlines.dxf" );
-                @d = <SISAAN>;
-                close SISAAN;
+                if ( -e "temp$thread/formlines.dxf" ) {
+                    open( SISAAN, "<temp$thread/formlines.dxf" );
+                    @d = <SISAAN>;
+                    close SISAAN;
 
-                &polylinedxfcrop;
+                    &polylinedxfcrop;
 
-                open( OUT,
-                    ">" . $batchoutfolderwin . "/" . $laz . '_formlines.dxf' );
-                print OUT $out;
-                close OUT;
-				}
-				
+                    open( OUT,
+                            ">"
+                          . $batchoutfolderwin . "/"
+                          . $laz
+                          . '_formlines.dxf' );
+                    print OUT $out;
+                    close OUT;
+                }
+
                 ## dotknolls.dxf
                 open( SISAAN, "<temp$thread/dotknolls.dxf" );
                 @d = <SISAAN>;
@@ -1993,25 +2010,20 @@ if (   ( $command eq '' && $batch == 1 && $proc < 2 )
                 ## dotknolls.dxf done
             }
 
-			
-				if($basemapcontours>0){
+            if ( $basemapcontours > 0 ) {
                 open( SISAAN, "<temp$thread/basemap.dxf" );
                 @d = <SISAAN>;
                 close SISAAN;
-				 &polylinedxfcrop;
-	            open( OUT,
-                        ">"
-                      . $batchoutfolderwin . "/"
-                      . $laz
-                      . '_basemap.dxf' );
+                &polylinedxfcrop;
+                open( OUT,
+                    ">" . $batchoutfolderwin . "/" . $laz . '_basemap.dxf' );
                 print OUT $out;
-                close OUT;			
-				}
-			
+                close OUT;
+            }
+
             if ( $savetempfolders == 1 ) {
                 system "mkdir \"temp_" . $laz . "_dir\"";
-                system "cp temp$thread/\*\.\* \"temp_" . $laz
-                  . "_dir/\"";
+                system "cp temp$thread/\*\.\* \"temp_" . $laz . "_dir/\"";
             }
 
         }
@@ -2065,23 +2077,23 @@ if ( $command =~ /\.laz/ || $command =~ /\.las/ || $command =~ /\.xyz/ ) {
     # convert laz to txt using las2txt
 
     if ( $skiplas2txt != 1 ) {
-		$lastxtexe=0;
-		#las2txt check
-		open(TEST, "las2txt -version 2>&1 |");
-		@las2txtversion=<TEST>;
-		close(TEST);
-		if(join('',@las2txtversion)=~/version/i){
-		 $lastxtexe=1;
-		}
-		
-        if ( -e 'las2txt.exe'  || $lastxtexe==1) {
+        $lastxtexe = 0;
 
-		   # unlink "$tempfolder/header.xyz";
-			
+        #las2txt check
+        open( TEST, "las2txt -version 2>&1 |" );
+        @las2txtversion = <TEST>;
+        close(TEST);
+        if ( join( '', @las2txtversion ) =~ /version/i ) {
+            $lastxtexe = 1;
+        }
+
+        if ( -e 'las2txt.exe' || $lastxtexe == 1 ) {
+
+            # unlink "$tempfolder/header.xyz";
+
             #system "las2txt -i \"" . $command
             #  . "\" -header pound -clip 0 0 0 0 -o $tempfolder/header.xyz";
 
-			  
             #open( SISAAN, "<" . $tempfolder . "/header.xyz" );
             #@d=<SISAAN>;
             #close(SISAAN);
@@ -2118,7 +2130,11 @@ if ( $command =~ /\.laz/ || $command =~ /\.las/ || $command =~ /\.xyz/ ) {
                 print "Using thinning factor $thinfactor\n";
             }
 
-            if ( $xfactor == 1 && $coordyfactor == 1 && $zfactor == 1 && $zoff == 0) {
+            if (   $xfactor == 1
+                && $coordyfactor == 1
+                && $zfactor == 1
+                && $zoff == 0 )
+            {
                 system "las2txt -i \"" . $command
                   . "\" -parse xyzcnri -keep_random_fraction $thinfactor -o $tempfolder/xyztemp.xyz";
 
@@ -2134,7 +2150,7 @@ if ( $command =~ /\.laz/ || $command =~ /\.las/ || $command =~ /\.xyz/ ) {
                     ( $x, $y, $z, $rest ) = split( / /, $d, 4 );
                     $x = $x * $xfactor;
                     $y = $y * $coordyfactor;
-                    $z = $z * $zfactor+$zoff;
+                    $z = $z * $zfactor + $zoff;
 
                     print ULOS "$x $y $z $rest";
                 }
@@ -2171,11 +2187,9 @@ to the same folder as pullautin.exe \n ";
     undef @d;
 ## 2m grid & controus 0.3
     print "\nKnoll detection part 1\n";
-    system(
-"pullauta $thread xyz2contours ".(0.3*$scalefactor)." xyztemp.xyz xyz_03.xyz contours03.dxf ground"
-    );
-
- 
+    system( "pullauta $thread xyz2contours "
+          . ( 0.3 * $scalefactor )
+          . " xyztemp.xyz xyz_03.xyz contours03.dxf ground" );
 
 ## copy xyz2.xyz
     open( SISAAN, "<" . $tempfolder . "/xyz_03.xyz" );
@@ -2185,25 +2199,32 @@ to the same folder as pullautin.exe \n ";
     }
     close ULOS;
     close SISAAN;
-	 if($basemapcontours >0){
-     print "\nBasemap contours\n";
-   system("pullauta $thread xyz2contours ".($basemapcontours)." xyz2.xyz null basemap.dxf");
- } 
-if(1*$Config->{_}->{skipknolldetection} != 1){
+    if ( $basemapcontours > 0 ) {
+        print "\nBasemap contours\n";
+        system( "pullauta $thread xyz2contours "
+              . ($basemapcontours)
+              . " xyz2.xyz null basemap.dxf" );
+    }
+    if ( 1 * $Config->{_}->{skipknolldetection} != 1 ) {
 ## detector
-    print "\nKnoll detection part 2\n";
-    system("pullauta $thread knolldetector");
-	}
+        print "\nKnoll detection part 2\n";
+        system("pullauta $thread knolldetector");
+    }
 ## xyz_knolls
     print "\nContour generation part 1\n";
     system("pullauta $thread xyzknolls");
-if(1*$Config->{_}->{skipknolldetection} != 1){
+    if ( 1 * $Config->{_}->{skipknolldetection} != 1 ) {
 ## contours 2.5
-    print "\nContour generation part 2\n";
-   system("pullauta $thread xyz2contours ".(2.5*$scalefactor)." xyz_knolls.xyz null out.dxf");
-   }else {
-system("pullauta $thread xyz2contours ".(2.5*$scalefactor)." xyztemp.xyz null out.dxf ground");
-}
+        print "\nContour generation part 2\n";
+        system( "pullauta $thread xyz2contours "
+              . ( 2.5 * $scalefactor )
+              . " xyz_knolls.xyz null out.dxf" );
+    }
+    else {
+        system( "pullauta $thread xyz2contours "
+              . ( 2.5 * $scalefactor )
+              . " xyztemp.xyz null out.dxf ground" );
+    }
 ## smoothjoin
     print "\nContour generation part 3\n";
     system("pullauta $thread smoothjoin");
@@ -2593,8 +2614,8 @@ if ( $command eq 'makecliffsold' ) {
                       . ($x) . ','
                       . ($y);
                     $bottom{ '' . ( $x + 1 ) . '_' . ( $y + 1 ) } = 1;
-                    $bottom{ '' . ($x) . '_' . ( $y + 1 ) } = 1;
-                    $bottom{ '' . ( $x + 1 ) . '_' . ($y) } = 1;
+                    $bottom{ '' . ($x) . '_' . ( $y + 1 ) }       = 1;
+                    $bottom{ '' . ( $x + 1 ) . '_' . ($y) }       = 1;
                 }
                 if ( ( -$cols1[$y] + $cols2[ $y + 1 ] ) > $limit * 1.4 ) {
                     $cliffs .= '|'
@@ -2611,7 +2632,7 @@ if ( $command eq 'makecliffsold' ) {
                       . ( $y + .5 ) . ','
                       . ( $x + 1 ) . ','
                       . ( $y + 1 );
-                    $bottom{ '' . ($x) . '_' . ($y) } = 1;
+                    $bottom{ '' . ($x) . '_' . ($y) }       = 1;
                     $bottom{ '' . ($x) . '_' . ( $y + 1 ) } = 1;
                     $bottom{ '' . ( $x + 1 ) . '_' . ($y) } = 1;
                 }
@@ -2632,8 +2653,8 @@ if ( $command eq 'makecliffsold' ) {
                       . ($x) . ','
                       . ($y);
                     $bottom{ '' . ( $x + 1 ) . '_' . ( $y - 1 ) } = 1;
-                    $bottom{ '' . ($x) . '_' . ( $y - 1 ) } = 1;
-                    $bottom{ '' . ( $x + 1 ) . '_' . ($y) } = 1;
+                    $bottom{ '' . ($x) . '_' . ( $y - 1 ) }       = 1;
+                    $bottom{ '' . ( $x + 1 ) . '_' . ($y) }       = 1;
 
                 }
                 if ( ( -$cols1[$y] + $cols2[ $y - 1 ] ) > $limit * 1.4 ) {
@@ -2651,7 +2672,7 @@ if ( $command eq 'makecliffsold' ) {
                       . ( $y - .5 ) . ','
                       . ( $x + 1 ) . ','
                       . ( $y - 1 );
-                    $bottom{ '' . ($x) . '_' . ($y) } = 1;
+                    $bottom{ '' . ($x) . '_' . ($y) }       = 1;
                     $bottom{ '' . ($x) . '_' . ( $y - 1 ) } = 1;
                     $bottom{ '' . ( $x + 1 ) . '_' . ($y) } = 1;
                 }
@@ -2715,9 +2736,9 @@ if ( $command eq 'makecliffsold' ) {
             $i++;
             if ( $c ne '' ) {
                 ( $x1, $y1, $x2, $y2, $tx, $ty ) = split( /\,/, $c );
-                $he = '' . ( 1 * $x1 ) . '_' . ( 1 * $y1 );
-                $e  = '' . ( 1 * $x2 ) . '_' . ( 1 * $y2 );
-                $out = '' . $x1 . ',' . $y1 . '|' . $x2 . ',' . $y2;
+                $he     = '' . ( 1 * $x1 ) . '_' . ( 1 * $y1 );
+                $e      = '' . ( 1 * $x2 ) . '_' . ( 1 * $y2 );
+                $out    = '' . $x1 . ',' . $y1 . '|' . $x2 . ',' . $y2;
                 $cl[$i] = '';
 
                 while (
@@ -2744,7 +2765,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[2] . ','
                           . $tmp[3];
                         $cl[ $head{ $e . '_1' } ] = '';
-                        $head{ $e . '_1' } = '';
+                        $head{ $e . '_1' }        = '';
                         $e = '' . ( 1 * $tmp[2] ) . '_' . ( 1 * $tmp[3] );
                     }
 
@@ -2758,7 +2779,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[2] . ','
                           . $tmp[3];
                         $cl[ $head{ $e . '_2' } ] = '';
-                        $head{ $e . '_2' } = '';
+                        $head{ $e . '_2' }        = '';
                         $e = '' . ( 1 * $tmp[2] ) . '_' . ( 1 * $tmp[3] );
                     }
 
@@ -2772,7 +2793,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[0] . ','
                           . $tmp[1];
                         $cl[ $tail{ $e . '_1' } ] = '';
-                        $tail{ $e . '_1' } = '';
+                        $tail{ $e . '_1' }        = '';
                         $e = '' . ( 1 * $tmp[0] ) . '_' . ( 1 * $tmp[1] );
                     }
 
@@ -2786,7 +2807,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[0] . ','
                           . $tmp[1];
                         $cl[ $tail{ $e . '_2' } ] = '';
-                        $tail{ $e . '_2' } = '';
+                        $tail{ $e . '_2' }        = '';
                         $e = '' . ( 1 * $tmp[0] ) . '_' . ( 1 * $tmp[1] );
                     }
                 }
@@ -2818,7 +2839,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[3] . '|'
                           . $out;
                         $cl[ $tail{ $he . '_1' } ] = '';
-                        $tail{ $he . '_1' } = '';
+                        $tail{ $he . '_1' }        = '';
                         $he = '' . ( 1 * $tmp[0] ) . '_' . ( 1 * $tmp[1] );
                     }
 
@@ -2833,7 +2854,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[3] . '|'
                           . $out;
                         $cl[ $tail{ $he . '_2' } ] = '';
-                        $tail{ $he . '_2' } = '';
+                        $tail{ $he . '_2' }        = '';
                         $he = '' . ( 1 * $tmp[0] ) . '_' . ( 1 * $tmp[1] );
                     }
 
@@ -2848,7 +2869,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[1] . '|'
                           . $out;
                         $cl[ $head{ $he . '_1' } ] = '';
-                        $head{ $he . '_1' } = '';
+                        $head{ $he . '_1' }        = '';
                         $he = '' . ( 1 * $tmp[2] ) . '_' . ( 1 * $tmp[3] );
                     }
                     if (   $head{ $he . '_2' } ne ''
@@ -2862,7 +2883,7 @@ if ( $command eq 'makecliffsold' ) {
                           . $tmp[1] . '|'
                           . $out;
                         $cl[ $head{ $he . '_2' } ] = '';
-                        $head{ $he . '_2' } = '';
+                        $head{ $he . '_2' }        = '';
                         $he = '' . ( 1 * $tmp[2] ) . '_' . ( 1 * $tmp[3] );
                     }
 
@@ -2969,39 +2990,37 @@ $y1
 if ( $command eq 'makecliffs' ) {
 
     $xyzin     = 'xyztemp.xyz';
-    $c1limit   =  $pcliff1;#$ARGV[2];
-    $c2limit   =  $pcliff2;#$ARGV[3];
-    $c3limit   =  $pcliff2;#$ARGV[4];
-    $xyzfilein ='xyztemp.xyz';
-	
-	$Config = Config::Tiny->new;
-$Config = Config::Tiny->read('pullauta.ini');
+    $c1limit   = $pcliff1;        #$ARGV[2];
+    $c2limit   = $pcliff2;        #$ARGV[3];
+    $c3limit   = $pcliff2;        #$ARGV[4];
+    $xyzfilein = 'xyztemp.xyz';
 
-$cliffthin = 1* $Config->{_}->{cliffthin};
-if($cliffthin *1 ==0){
-$cliffthin =1;
-}
-$steepfactor = 1* $Config->{_}->{cliffsteepfactor};
-if($steepfactor *1 ==0){
-$steepfactor=0.33;
-}
+    $Config = Config::Tiny->new;
+    $Config = Config::Tiny->read('pullauta.ini');
 
+    $cliffthin = 1 * $Config->{_}->{cliffthin};
+    if ( $cliffthin * 1 == 0 ) {
+        $cliffthin = 1;
+    }
+    $steepfactor = 1 * $Config->{_}->{cliffsteepfactor};
+    if ( $steepfactor * 1 == 0 ) {
+        $steepfactor = 0.33;
+    }
 
-$flatplace = 1* $Config->{_}->{cliffflatplace};
+    $flatplace = 1 * $Config->{_}->{cliffflatplace};
 
-if($flatplace *1 ==0){
-$flatplace=6.6;
-}
-	
-	
+    if ( $flatplace * 1 == 0 ) {
+        $flatplace = 6.6;
+    }
 
-$nosmallciffs = 1* $Config->{_}->{cliffnosmallciffs};
+    $nosmallciffs = 1 * $Config->{_}->{cliffnosmallciffs};
 
-if($nosmallciffs *1 ==0){
-$nosmallciffs=6;
-}else{
-$nosmallciffs=$nosmallciffs-$flatplace;
-}
+    if ( $nosmallciffs * 1 == 0 ) {
+        $nosmallciffs = 6;
+    }
+    else {
+        $nosmallciffs = $nosmallciffs - $flatplace;
+    }
 
     #print "#    $c1limit     $c2limit#\n";
 
@@ -3051,8 +3070,8 @@ $nosmallciffs=$nosmallciffs-$flatplace;
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -3113,23 +3132,23 @@ $nosmallciffs=$nosmallciffs-$flatplace;
 
     while ( $rec = <SISAAN> ) {
 
-	 if($cliffthin > rand()){
+        if ( $cliffthin > rand() ) {
 
-        @r = split( / /, $rec );
-        $i = 0;
-        $j = 0;
-        if ( $r[3] == 2 ) {
+            @r = split( / /, $rec );
+            $i = 0;
+            $j = 0;
+            if ( $r[3] == 2 ) {
 
-            $m[ floor( $r[0] - $xmin ) / 3 ][ floor( $r[1] - $ymin ) / 3 ] .=
-                '|'
-              . ( floor( $r[0] * 10 ) / 10 ) . ','
-              . ( floor( $r[1] * 10 ) / 10 ) . ','
-              . ( floor( $r[2] * 100 ) / 100 );
+                $m[ floor( $r[0] - $xmin ) / 3 ][ floor( $r[1] - $ymin ) / 3 ]
+                  .= '|'
+                  . ( floor( $r[0] * 10 ) / 10 ) . ','
+                  . ( floor( $r[1] * 10 ) / 10 ) . ','
+                  . ( floor( $r[2] * 100 ) / 100 );
+
+            }
 
         }
-
     }
-	}
     close SISAAN;
     $w = floor( $xmax - $xmin ) / 3;
     $h = floor( $ymax - $ymin ) / 3;
@@ -3214,32 +3233,35 @@ ENTITIES
                 @d = split( /\|/, $loop );
                 @t = split( /\|/, $test );
 
-				if($#d >30){
-				$b=floor($#d/30);
-					for($i=0;$i<$#d;$i++){
-						splice(@d, $i, $b);
-					}
-				}
+                if ( $#d > 30 ) {
+                    $b = floor( $#d / 30 );
+                    for ( $i = 0 ; $i < $#d ; $i++ ) {
+                        splice( @d, $i, $b );
+                    }
+                }
 
-				if($#t >300){
-				$b=floor($#t/300);
-					for($i=0;$i<$#t;$i++){
-						splice(@t, $i, $b);
-					}
-				}
-				
-				# test is minmax big enough 
-				$tempmax='';
-				$tempmin='';
-			    foreach $rec (@t) {
-                            if ( $rec ne '' ) {
-                                ( $x0, $y0, $h0 ) = split( /\,/, $rec );	
-							    if($tempmax eq '' || $tempmax<$h0){$tempmax=$h0;}
-							    if($tempin eq '' || $tempmin>$h0){$tempmin=$h0;}
-							}
-				}
-				if($tempmax-$tempmin < $c1limit*0.999){ @d=();}
+                if ( $#t > 300 ) {
+                    $b = floor( $#t / 300 );
+                    for ( $i = 0 ; $i < $#t ; $i++ ) {
+                        splice( @t, $i, $b );
+                    }
+                }
 
+                # test is minmax big enough
+                $tempmax = '';
+                $tempmin = '';
+                foreach $rec (@t) {
+                    if ( $rec ne '' ) {
+                        ( $x0, $y0, $h0 ) = split( /\,/, $rec );
+                        if ( $tempmax eq '' || $tempmax < $h0 ) {
+                            $tempmax = $h0;
+                        }
+                        if ( $tempin eq '' || $tempmin > $h0 ) {
+                            $tempmin = $h0;
+                        }
+                    }
+                }
+                if ( $tempmax - $tempmin < $c1limit * 0.999 ) { @d = (); }
 
                 foreach $rec (@d) {
                     if ( $rec ne '' ) {
@@ -3248,17 +3270,20 @@ ENTITIES
                         $clifflength = 1.47;
                         $steep =
                           $steepness[ floor( ( $x0 - $xstart ) / $size + 0.5 ) ]
-                          [ floor( ( $y0 - $ystart ) / $size + 0.5 ) ] - $flatplace;
+                          [ floor( ( $y0 - $ystart ) / $size + 0.5 ) ] -
+                          $flatplace;
                         if ( $steep < 0 )  { $steep = 0; }
                         if ( $steep > 17 ) { $steep = 17; }
-						
-						$bonus=($c2limit-$c1limit)*(1-($nosmallciffs-$steep)/$nosmallciffs );
-                        $limit  = $c1limit + $bonus;
-						
-						$bonus=$c2limit* $steepfactor * ($steep - $nosmallciffs);
-						if($bonus<0){$bonus=0;}
-						
-                        $limit2 = $c2limit +$bonus;
+
+                        $bonus = ( $c2limit - $c1limit ) *
+                          ( 1 - ( $nosmallciffs - $steep ) / $nosmallciffs );
+                        $limit = $c1limit + $bonus;
+
+                        $bonus =
+                          $c2limit * $steepfactor * ( $steep - $nosmallciffs );
+                        if ( $bonus < 0 ) { $bonus = 0; }
+
+                        $limit2 = $c2limit + $bonus;
 
                         foreach $rec2 (@t) {
                             if ( $rec2 ne '' ) {
@@ -3269,10 +3294,13 @@ ENTITIES
                                       ( $y0 - $yt ) * ( $y0 - $yt ) );
 
                                 if ( $dist > 0 ) {
-                                    if (   $steep < $nosmallciffs
+                                    if (
+                                           $steep < $nosmallciffs
                                         && $temp > $limit
-                                        && $temp >
-                                        ( $limit + ( $dist - $limit ) * 0.85 ) )
+                                        && $temp > (
+                                            $limit + ( $dist - $limit ) * 0.85
+                                        )
+                                      )
                                     {
                                         ( $r, $g, $b ) = $img2->rgb(
                                             $img2->getPixel(
@@ -3331,7 +3359,8 @@ cliff2
                                     if (
                                         $temp > $limit2
                                         && $temp > (
-                                            $limit2 + ( $dist - $limit2 ) * 0.85
+                                            $limit2 +
+                                              ( $dist - $limit2 ) * 0.85
                                         )
                                       )
                                     {
@@ -3388,8 +3417,6 @@ cliff3
 
         }
     }
-
-	
 
 ########################
 
@@ -3526,15 +3553,14 @@ cliff4
 }
 ####################################
 if ( $command eq 'makevegenew' ) {
-    
 
-	$block =  1 * $Config->{_}->{'greendetectsize'};
+    $block = 1 * $Config->{_}->{'greendetectsize'};
     open( SISAAN, "<" . $tempfolder . "xyz2.xyz" );
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -3604,42 +3630,45 @@ if ( $command eq 'makevegenew' ) {
         $i++;
     }
 
-    @greenshades       = split( /\|/, $Config->{_}->{'greenshades'} );
-    $greensize      =  0;# = 1 * $Config->{_}->{'greendetectsize'};
-    $dotsize           = 1 * $Config->{_}->{'dotsize'};
-    $yellowheight      = 1 * $Config->{_}->{'yellowheight'};
-    $yellowthresold    = 1 * $Config->{_}->{'yellowthresold'};
-    $greenground       = 1 * $Config->{_}->{'greenground'};
-    $pointvolumefactor = 1 * $Config->{_}->{'pointvolumefactor'};
-	$pointvolumeexponent= 1 * $Config->{_}->{'pointvolumeexponent'};
-	$greenhigh= 1 * $Config->{_}->{'greenhigh'};
-	$topweight= 1 * $Config->{_}->{'topweight'};
-$greentone= 1 * $Config->{_}->{'lightgreentone'};
-$zoffset= 1 * $Config->{_}->{'vegezoffset'};
+    @greenshades         = split( /\|/, $Config->{_}->{'greenshades'} );
+    $greensize           = 0;    # = 1 * $Config->{_}->{'greendetectsize'};
+    $dotsize             = 1 * $Config->{_}->{'dotsize'};
+    $yellowheight        = 1 * $Config->{_}->{'yellowheight'};
+    $yellowthresold      = 1 * $Config->{_}->{'yellowthresold'};
+    $greenground         = 1 * $Config->{_}->{'greenground'};
+    $pointvolumefactor   = 1 * $Config->{_}->{'pointvolumefactor'};
+    $pointvolumeexponent = 1 * $Config->{_}->{'pointvolumeexponent'};
+    $greenhigh           = 1 * $Config->{_}->{'greenhigh'};
+    $topweight           = 1 * $Config->{_}->{'topweight'};
+    $greentone           = 1 * $Config->{_}->{'lightgreentone'};
+    $zoffset             = 1 * $Config->{_}->{'vegezoffset'};
 
-$uglimit= 1 * $Config->{_}->{'undergrowth'};
-$uglimit2= 1 * $Config->{_}->{'undergrowth2'};
+    $uglimit  = 1 * $Config->{_}->{'undergrowth'};
+    $uglimit2 = 1 * $Config->{_}->{'undergrowth2'};
 
     $xyzin = 'xyztemp.xyz';
 
-    $xmin    = $xstart;
-    $ymin    = $ystart;
-    $hmin    = 999999;
-    $hmax    = -999999;
-    $counter = 0;
-$addition= 1 * $Config->{_}->{'greendotsize'};
+    $xmin     = $xstart;
+    $ymin     = $ystart;
+    $hmin     = 999999;
+    $hmax     = -999999;
+    $counter  = 0;
+    $addition = 1 * $Config->{_}->{'greendotsize'};
 
-$firstandlastreturnasground= 1 * $Config->{_}->{'firstandlastreturnasground'};
-if($firstandlastreturnasground == 0){
-$firstandlastreturnasground=1;
-}
-	$firstandlastfactor = 1 * $Config->{_}->{'firstandlastreturnfactor'};
-	$lastfactor = 1 * $Config->{_}->{'lastreturnfactor'};
-	if($Config->{_}->{'yellowfirstlast'} eq ''){
-	$yellowfirstlast = 1 ;;
-	}else{
-	$yellowfirstlast = 1 * $Config->{_}->{'yellowfirstlast'};
-	}
+    $firstandlastreturnasground =
+      1 * $Config->{_}->{'firstandlastreturnasground'};
+    if ( $firstandlastreturnasground == 0 ) {
+        $firstandlastreturnasground = 1;
+    }
+    $firstandlastfactor = 1 * $Config->{_}->{'firstandlastreturnfactor'};
+    $lastfactor         = 1 * $Config->{_}->{'lastreturnfactor'};
+    if ( $Config->{_}->{'yellowfirstlast'} eq '' ) {
+        $yellowfirstlast = 1;
+    }
+    else {
+        $yellowfirstlast = 1 * $Config->{_}->{'yellowfirstlast'};
+    }
+
     #print "
     #    $xmax
     #    $ymax
@@ -3650,7 +3679,7 @@ $firstandlastreturnasground=1;
     #    $hmax
     #";
     print "..";
-    
+
     open( SISAAN, "<" . $tempfolder . "$xyzin" );
     $counter = 0;
     while ( $rec = <SISAAN> ) {
@@ -3684,8 +3713,8 @@ $firstandlastreturnasground=1;
     close SISAAN;
     undef @d;
 
-	# yellow
-	
+    # yellow
+
     print "..";
     ##
     open( SISAAN, "<" . $tempfolder . "$xyzin" );
@@ -3720,21 +3749,23 @@ $firstandlastreturnasground=1;
                       [ floor( ( $r[1] - $ymin ) / 3 ) ] += 1;
                 }
                 else {
-				if(($r[4] == 1 && $r[5] == 1 )){
-                    $noyhit[ floor( ( $r[0] - $xmin ) / 3 ) ]
-                      [ floor( ( $r[1] - $ymin ) / 3 ) ] += $yellowfirstlast;				
-				}else{
-                    $noyhit[ floor( ( $r[0] - $xmin ) / 3 ) ]
-                      [ floor( ( $r[1] - $ymin ) / 3 ) ] += 1;
-					  }
+                    if ( ( $r[4] == 1 && $r[5] == 1 ) ) {
+                        $noyhit[ floor( ( $r[0] - $xmin ) / 3 ) ]
+                          [ floor( ( $r[1] - $ymin ) / 3 ) ] +=
+                          $yellowfirstlast;
+                    }
+                    else {
+                        $noyhit[ floor( ( $r[0] - $xmin ) / 3 ) ]
+                          [ floor( ( $r[1] - $ymin ) / 3 ) ] += 1;
+                    }
                 }
             }
         }
     }
     close SISAAN;
     undef @d;
-	
-	# green
+
+    # green
     print "..";
     ##
     open( SISAAN, "<" . $tempfolder . "$xyzin" );
@@ -3746,125 +3777,145 @@ $firstandlastreturnasground=1;
             $i = 0;
             $j = 0;
 
-			$r[2]=$r[2]-$zoffset;
+            $r[2] = $r[2] - $zoffset;
             if ( $r[0] > $xmin && $r[1] > $ymin ) {
-			
-									if($r[5] ==1){
-						    $firsthit[ floor( ( $r[0] - $xmin ) / $block +0.5)
-                                  ][ floor( ( $r[1] - $ymin ) / $block +0.5) ] += 1;
-					
-						}
-						
-			
-									$a=$xyz[ floor( ( $r[0] - $xmin ) / $size ) ][ floor( ( $r[1] - $ymin ) / $size) ];
-						$b=$xyz[ floor( ( $r[0] - $xmin ) / $size ) +1][ floor( ( $r[1] - $ymin ) / $size) ];
-						$c=$xyz[ floor( ( $r[0] - $xmin ) / $size ) ][ floor( ( $r[1] - $ymin ) / $size) +1];
-						$d=$xyz[ floor( ( $r[0] - $xmin ) / $size ) +1 ][ floor( ( $r[1] - $ymin ) / $size) +1];
 
-						$distx=($r[0] - $xmin ) / $size -floor( ( $r[0] - $xmin ) / $size );
-						$disty=( $r[1] - $ymin ) / $size -floor( ( $r[1] - $ymin ) / $size);
-						
-						$ab=$a*(1-$distx)+$b*$distx;
-						$cd=$c*(1-$distx)+$d*$distx;
-						
-						$thelele=$ab*(1-$disty)+$cd*$disty;
-## undergrowth	
-				    if (   $r[0] > $xmin && $r[1] > $ymin)   {
-               if (  1.2 >= $r[2] - $thelele ) {
-                    
-				   if($r[3] == 2){
-                        $ugg[ floor( ( $r[0] - $xmin ) / $block/6 +.5) ] [ floor( ( $r[1] - $ymin ) / $block/6 ) +.5] += 1;
-					}else{
-					   if (  0.25 < $r[2] - $thelele ) {
-						 $ug[ floor( ( $r[0] - $xmin ) / $block/6 +.5) ] [ floor( ( $r[1] - $ymin ) / $block/6 ) +.5] += 1;
-						 }else{
-						  $ugg[ floor( ( $r[0] - $xmin ) / $block/6 +.5) ] [ floor( ( $r[1] - $ymin ) / $block/6 ) +.5] += 1;
-						 }
-					}				   
-				  
-					
-			   }else{
-			     $ugg[ floor( ( $r[0] - $xmin ) / $block/6 +.5) ] [ floor( ( $r[1] - $ymin ) / $block/6 ) +.5] += 0.05;
-			   }
-	}
-##					
+                if ( $r[5] == 1 ) {
+                    $firsthit[ floor( ( $r[0] - $xmin ) / $block + 0.5 ) ]
+                      [ floor( ( $r[1] - $ymin ) / $block + 0.5 ) ] += 1;
+
+                }
+
+                $a = $xyz[ floor( ( $r[0] - $xmin ) / $size ) ]
+                  [ floor( ( $r[1] - $ymin ) / $size ) ];
+                $b = $xyz[ floor( ( $r[0] - $xmin ) / $size ) + 1 ]
+                  [ floor( ( $r[1] - $ymin ) / $size ) ];
+                $c = $xyz[ floor( ( $r[0] - $xmin ) / $size ) ]
+                  [ floor( ( $r[1] - $ymin ) / $size ) + 1 ];
+                $d = $xyz[ floor( ( $r[0] - $xmin ) / $size ) + 1 ]
+                  [ floor( ( $r[1] - $ymin ) / $size ) + 1 ];
+
+                $distx = ( $r[0] - $xmin ) / $size -
+                  floor( ( $r[0] - $xmin ) / $size );
+                $disty = ( $r[1] - $ymin ) / $size -
+                  floor( ( $r[1] - $ymin ) / $size );
+
+                $ab = $a * ( 1 - $distx ) + $b * $distx;
+                $cd = $c * ( 1 - $distx ) + $d * $distx;
+
+                $thelele = $ab * ( 1 - $disty ) + $cd * $disty;
+## undergrowth
+                if ( $r[0] > $xmin && $r[1] > $ymin ) {
+                    if ( 1.2 >= $r[2] - $thelele ) {
+
+                        if ( $r[3] == 2 ) {
+                            $ugg[ floor( ( $r[0] - $xmin ) / $block / 6 + .5 ) ]
+                              [ floor( ( $r[1] - $ymin ) / $block / 6 ) + .5 ]
+                              += 1;
+                        }
+                        else {
+                            if ( 0.25 < $r[2] - $thelele ) {
+                                $ug[ floor(
+                                      ( $r[0] - $xmin ) / $block / 6 + .5 ) ]
+                                  [ floor( ( $r[1] - $ymin ) / $block / 6 ) +
+                                  .5 ] += 1;
+                            }
+                            else {
+                                $ugg[ floor(
+                                      ( $r[0] - $xmin ) / $block / 6 + .5 ) ]
+                                  [ floor( ( $r[1] - $ymin ) / $block / 6 ) +
+                                  .5 ] += 1;
+                            }
+                        }
+
+                    }
+                    else {
+                        $ugg[ floor( ( $r[0] - $xmin ) / $block / 6 + .5 ) ]
+                          [ floor( ( $r[1] - $ymin ) / $block / 6 ) + .5 ] +=
+                          0.05;
+                    }
+                }
+##
                 if (   $r[3] == 2
                     || $greenground >= $r[2] - $thelele )
                 {
-            if (   $r[3] == 2){$foo1++;}else{	$foo2++;}
-			    
+                    if   ( $r[3] == 2 ) { $foo1++; }
+                    else                { $foo2++; }
+
                    #@cols=split(/\#/,$row[ floor($r[0] - $xmin ) ]);
                    #$cols[ floor( $r[1] - $ymin ) ] .=              '|' . $r[2];
                    #$row[ floor($r[0] - $xmin ) ]=join('#',@cols);
                     if ( $r[0] > $xmin && $r[1] > $ymin ) {
-					
-					if( $r[4] == 1 && $r[5] == 1 ){
-					$ghit[ floor( ( $r[0] - $xmin ) / $block +.5) ]
-                          [ floor( ( $r[1] - $ymin ) / $block ) +.5] += $firstandlastreturnasground;
-					}else{
-                        $ghit[ floor( ( $r[0] - $xmin ) / $block +.5) ]
-                          [ floor( ( $r[1] - $ymin ) / $block ) +.5] += 1;
+
+                        if ( $r[4] == 1 && $r[5] == 1 ) {
+                            $ghit[ floor( ( $r[0] - $xmin ) / $block + .5 ) ]
+                              [ floor( ( $r[1] - $ymin ) / $block ) + .5 ] +=
+                              $firstandlastreturnasground;
+                        }
+                        else {
+                            $ghit[ floor( ( $r[0] - $xmin ) / $block + .5 ) ]
+                              [ floor( ( $r[1] - $ymin ) / $block ) + .5 ] += 1;
+                        }
                     }
-					}
                 }
                 else {
 
 #	pullauta $thread makevegenew xyztemp.xyz $pvege_yellow $pvege_green $lightgreenlimit $darkgreenlimit $yellowlimit
 # && ( $r[4] != 1 || $r[5] != 1  )
                     if (   $r[0] > $xmin
-                        && $r[1] > $ymin
-                         )
+                        && $r[1] > $ymin )
                     {
-					    #interpolated elevation needed?
+                        #interpolated elevation needed?
 
-						
-												
-						#last
-						$last=1;
-						if( $r[5] == $r[4] ){
-						#if($r[2] -$thelele  < 7){
-						$last=$lastfactor;
-						#}
-						}
-						#firstandlast
-						if( $r[4] == 1 && $r[5] == 1 ){
-						if($r[2] -$thelele  < 5){
-						$last=$firstandlastfactor;
-						}
-						
-						}
+                        #last
+                        $last = 1;
+                        if ( $r[5] == $r[4] ) {
+
+                            #if($r[2] -$thelele  < 7){
+                            $last = $lastfactor;
+
+                            #}
+                        }
+
+                        #firstandlast
+                        if ( $r[4] == 1 && $r[5] == 1 ) {
+                            if ( $r[2] - $thelele < 5 ) {
+                                $last = $firstandlastfactor;
+                            }
+
+                        }
+
                         #zone1=0.5|1|99|0.7
                         $out = 0;
                         for ( $i = 0 ; $i < $#zone + 1 && $out == 0 ; $i++ ) {
                             @vals = split( /\|/, $zone[$i] );
-                            if (   $out == 0
-                                && $r[2] -
-                                $thelele >=
-                                $vals[0]
-                                && $r[2] -
-                                $thelele <
-                                $vals[1]
-                                && $top[ floor( ( $r[0] - $xmin ) / $block +0.5) ]
-                                [ floor( ( $r[1] - $ymin ) / $block +0.5) ] -
-                                $thelele <
-                                $vals[2] )
+                            if (
+                                   $out == 0
+                                && $r[2] - $thelele >= $vals[0]
+                                && $r[2] - $thelele < $vals[1]
+                                && $top[
+                                floor( ( $r[0] - $xmin ) / $block + 0.5 )
+                                ][ floor( ( $r[1] - $ymin ) / $block + 0.5 ) ]
+                                - $thelele < $vals[2]
+                              )
                             {
-                                
-                                  $greenhit[ floor( ( $r[0] - $xmin ) / $block +0.5)
-                                  ][ floor( ( $r[1] - $ymin ) / $block +0.5) ] +=
-                                  $vals[3]*$last;
+
+                                $greenhit[ floor(
+                                      ( $r[0] - $xmin ) / $block + 0.5 ) ]
+                                  [ floor( ( $r[1] - $ymin ) / $block + 0.5 ) ]
+                                  += $vals[3] * $last;
                                 $out = 1;
                             }
 
                         }
 
-						
-						if($thelele+$greenhigh<$r[2]){
-						    $highit[ floor( ( $r[0] - $xmin ) / $block +0.5)
-                                  ][ floor( ( $r[1] - $ymin ) / $block +0.5) ] += 1;
-					
-						}
-						
+                        if ( $thelele + $greenhigh < $r[2] ) {
+                            $highit[ floor( ( $r[0] - $xmin ) / $block + 0.5 ) ]
+                              [ floor( ( $r[1] - $ymin ) / $block + 0.5 ) ] +=
+                              1;
+
+                        }
+
 #				if($r[2] < $pvege_green+$xyz[ floor( ($r[0] - $xmin )/$size) ][floor( ($r[1] - $ymin )/$size)] && $r[2] > $pvege_low+$xyz[ floor( ($r[0] - $xmin )/$size) ][floor( ($r[1] - $ymin )/$size)]) {
 #$greenhit[ floor( ($r[0] - $xmin )/$block) ][floor( ($r[1] - $ymin )/$block)] +=1;
 #               }else{
@@ -3893,44 +3944,54 @@ $firstandlastreturnasground=1;
 
     print "..";
 
-    $w = floor( $xmax - $xmin ) / $block;
-    $h = floor( $ymax - $ymin ) / $block;
+    $w  = floor( $xmax - $xmin ) / $block;
+    $h  = floor( $ymax - $ymin ) / $block;
     $wy = floor( $xmax - $xmin ) / 3;
     $hy = floor( $ymax - $ymin ) / 3;
-	
+
     $avevolume = $counter / $w / $h;
 
-	#print "\n $greenground  $foo1 $foo2 \n";
+    #print "\n $greenground  $foo1 $foo2 \n";
 ####################################################
     use GD;
 
-	# 600 / 254 /$scalefactor
-	    $imgug= new GD::Image( $w * $block* 600 / 254 /$scalefactor, $h * $block * 600 / 254 /$scalefactor);
-		
-    $imggr1 = new GD::Image( $w * $block, $h * $block );
-   $imggr1b = new GD::Image( $w * $block, $h * $block );
+    # 600 / 254 /$scalefactor
+    $imgug = new GD::Image(
+        $w * $block * 600 / 254 / $scalefactor,
+        $h * $block * 600 / 254 / $scalefactor
+    );
 
+    $imggr1  = new GD::Image( $w * $block, $h * $block );
+    $imggr1b = new GD::Image( $w * $block, $h * $block );
 
     $imgye2 = new GD::Image( $w * $block, $h * $block );
 
     $imgwater = new GD::Image( $w * $block, $h * $block );
-    $wh2 = $imgwater->colorAllocate( 255, 255, 255 );
+    $wh2      = $imgwater->colorAllocate( 255, 255, 255 );
 
     #252,254,252
     #252,254,4
     #4,254,4
 
-
-
     $wh2 = $imggr1->colorAllocate( 255, 255, 255 );
-	$foo = $imggr1b->colorAllocate( 255, 255, 255 );
-	#print "\n$wh2  $foo\n";
-for($gshade=0;$gshade<$#greenshades+1;$gshade++){
-$gr1[$gshade]= $imggr1->colorAllocate( $greentone-($greentone/$#greenshades)*$gshade, 254-(74/$#greenshades)*$gshade, $greentone-($greentone/$#greenshades)*$gshade);
-$foo= $imggr1b->colorAllocate( $greentone-($greentone/$#greenshades)*$gshade, 254-(74/$#greenshades)*$gshade, $greentone-($greentone/$#greenshades)*$gshade);
-#print ''.$gr1[$gshade].'  '.$foo."\n";
-}
- 
+    $foo = $imggr1b->colorAllocate( 255, 255, 255 );
+
+    #print "\n$wh2  $foo\n";
+    for ( $gshade = 0 ; $gshade < $#greenshades + 1 ; $gshade++ ) {
+        $gr1[$gshade] = $imggr1->colorAllocate(
+            $greentone - ( $greentone / $#greenshades ) * $gshade,
+            254 - ( 74 / $#greenshades ) * $gshade,
+            $greentone - ( $greentone / $#greenshades ) * $gshade
+        );
+        $foo = $imggr1b->colorAllocate(
+            $greentone - ( $greentone / $#greenshades ) * $gshade,
+            254 - ( 74 / $#greenshades ) * $gshade,
+            $greentone - ( $greentone / $#greenshades ) * $gshade
+        );
+
+        #print ''.$gr1[$gshade].'  '.$foo."\n";
+    }
+
     $wh2 = $imgye2->colorAllocate( 255, 255, 255 );
 
     $ye2 = $imgye2->colorAllocate( 255, 219, 166 );
@@ -3939,43 +4000,43 @@ $foo= $imggr1b->colorAllocate( $greentone-($greentone/$#greenshades)*$gshade, 25
     $imggr1->filledRectangle( 0, 0, $w * $block + 1, $h * $block + 1, $wh2 );
     $imgye2->filledRectangle( 0, 0, $w * $block + 1, $h * $block + 1, $wh2 );
     print "...";
-$greendetectsize=$greendetectsize/2;
+    $greendetectsize = $greendetectsize / 2;
 
-$aveg=0;
-$avecount=0;
+    $aveg     = 0;
+    $avecount = 0;
     for ( $x = $greensize + 1 ; $x < $w - $greensize ; $x++ ) {
 
         for ( $y = $greensize + 1 ; $y < $h - $greensize ; $y++ ) {
-		if($ghit[$x][$y] > 1){
-		
-		$aveg +=$firsthit[$x][$y];
-$avecount++;
-		}
-		}
-		}
-$aveg=$aveg/$avecount;
-		
-		# yellow
-		
+            if ( $ghit[$x][$y] > 1 ) {
+
+                $aveg += $firsthit[$x][$y];
+                $avecount++;
+            }
+        }
+    }
+    $aveg = $aveg / $avecount;
+
+    # yellow
+
     for ( $x = 3 + 1 ; $x < $wy - 3 ; $x++ ) {
 
         for ( $y = 3 + 1 ; $y < $hy - 3 ; $y++ ) {
 
-            $ghit=0;
+            $ghit      = 0;
             $greenhit  = 0;
             $highhit   = 0;
             $roof      = 0;
             $count     = 0;
             $totalhits = 0;
             $avetotal  = 0;
-			$inhit=0;
-			$outhit=0;
-$highit=0;
-$firsthit=0;
-			
+            $inhit     = 0;
+            $outhit    = 0;
+            $highit    = 0;
+            $firsthit  = 0;
 
-$i=$x;$j=$y;
- 
+            $i = $x;
+            $j = $y;
+
             $ghit2     = 0;
             $greenhit2 = 0;
             $highhit2  = 0;
@@ -3988,67 +4049,68 @@ $i=$x;$j=$y;
 
             if ( ($ghit2) / ( $highhit2 + $ghit2 + 0.01 ) > $yellowthresold ) {
 
-#                $imgye2->filledArc(
-#                    $x * 3 + 3 / 2+3,
-#                    ( $hy - $y ) * 3 - 3 / 2-3,
-#                    3*1.7, 3*1.7, 0, 360, $ye2
-#                );
+                #                $imgye2->filledArc(
+                #                    $x * 3 + 3 / 2+3,
+                #                    ( $hy - $y ) * 3 - 3 / 2-3,
+                #                    3*1.7, 3*1.7, 0, 360, $ye2
+                #                );
 
-$imgye2->filledRectangle(
-                    $x * 3 - 1+3,
-                    ( $hy - $y ) * 3-1-3,
-                    $x * 3 + 1+3,
-                    ( $hy - $y ) * 3+1-3, $ye2
+                $imgye2->filledRectangle(
+                    $x * 3 - 1 + 3,
+                    ( $hy - $y ) * 3 - 1 - 3,
+                    $x * 3 + 1 + 3,
+                    ( $hy - $y ) * 3 + 1 - 3, $ye2
                 );
 
             }
         }
 
     }
-		
-		#green
-    for ( $x = $greensize + 2 ; $x < $w - $greensize*1 ; $x++ ) {
 
-        for ( $y = $greensize + 2 ; $y < $h - $greensize*2 ; $y++ ) {
+    #green
+    for ( $x = $greensize + 2 ; $x < $w - $greensize * 1 ; $x++ ) {
 
-            $ghit=0;
+        for ( $y = $greensize + 2 ; $y < $h - $greensize * 2 ; $y++ ) {
+
+            $ghit      = 0;
             $greenhit  = 0;
             $highhit   = 0;
             $roof      = 0;
             $count     = 0;
             $totalhits = 0;
             $avetotal  = 0;
-			$inhit=0;
-			$outhit=0;
-$highit=0;
-$firsthit=0;
-			
+            $inhit     = 0;
+            $outhit    = 0;
+            $highit    = 0;
+            $firsthit  = 0;
+
 #$top[ floor( $x) ][floor($y)] -$xyz[ floor( $x*$block/$size) ][floor( $y*$block/$size)]
 #thresold1=0.5|3|0.14
-$i=$x;$j=$y;
-                    $roof +=
-                      $top[ floor($x) ][ floor($y) ] -
-                      $xyz[ floor( $x * $block / $size ) ]
-                      [ floor( $y * $block / $size ) ];
-$outhit++;
-  $greenhit = $greenhit[$i][$j];
-  $firsthit = $firsthit[$i][$j];
-      for ( $x_ = $x-2; $x_ < $x+3 ; $x_++ ) {
-      for ( $y_ = $y-2; $y_ < $y+3 ; $y_++ ) {
-	  if($firsthit > $firsthit[$x_][$y_]){$firsthit = $firsthit[$x_][$y_];}
-	  }
-	  }
+            $i = $x;
+            $j = $y;
+            $roof +=
+              $top[ floor($x) ][ floor($y) ] -
+              $xyz[ floor( $x * $block / $size ) ]
+              [ floor( $y * $block / $size ) ];
+            $outhit++;
+            $greenhit = $greenhit[$i][$j];
+            $firsthit = $firsthit[$i][$j];
+            for ( $x_ = $x - 2 ; $x_ < $x + 3 ; $x_++ ) {
+                for ( $y_ = $y - 2 ; $y_ < $y + 3 ; $y_++ ) {
+                    if ( $firsthit > $firsthit[$x_][$y_] ) {
+                        $firsthit = $firsthit[$x_][$y_];
+                    }
+                }
+            }
 
-   
- $highit +=  $highit[$i][$j];
+            $highit += $highit[$i][$j];
 
- #if(floor($i) == floor($x) &&  floor($j) == floor($y) ){ $inhit++; $greenhit += $greenhit[$i][$j];}
-               
-			   $ghit     += $ghit[$i][$j];
-                    $count++;
-                    $totalhits += $hits[$i][$j];
-                    $avetotal  += $avevolume;
-					
+#if(floor($i) == floor($x) &&  floor($j) == floor($y) ){ $inhit++; $greenhit += $greenhit[$i][$j];}
+
+            $ghit += $ghit[$i][$j];
+            $count++;
+            $totalhits += $hits[$i][$j];
+            $avetotal  += $avevolume;
 
             $vol  = $totalhits / $avetotal;
             $roof = $roof / $count;
@@ -4075,32 +4137,46 @@ $outhit++;
 #	pullauta $thread makevegenew xyztemp.xyz $pvege_yellow $pvege_green $lightgreenlimit $darkgreenlimit $yellowlimit
             $greenshade = 0;
             $highfactor = 0;
-            #$myfactor =  0;#(0.2+( $totalhits - $avetotal ) / $avetotal) * ($pointvolumefactor-1);
-			#if($myfactor < 0){$myfactor=0;}
-			
-			# $ghit=$ghit + $ghit * $myfactor;
-			#print "$ghit  $aveg  $count\n";
-			#if($ghit < $aveg *$count * 0.25){
-			#$ghit=$aveg *$count * 0.25;
-			#}
 
-			$thevalue= $greenhit/($ghit + $greenhit+1) * (1-$topweight+ $topweight*$highit/($ghit + $greenhit+$highit+1))*(1-$pointvolumefactor*$firsthit/($aveg+0.00001))**$pointvolumeexponent;
-			
+#$myfactor =  0;#(0.2+( $totalhits - $avetotal ) / $avetotal) * ($pointvolumefactor-1);
+#if($myfactor < 0){$myfactor=0;}
+
+            # $ghit=$ghit + $ghit * $myfactor;
+            #print "$ghit  $aveg  $count\n";
+            #if($ghit < $aveg *$count * 0.25){
+            #$ghit=$aveg *$count * 0.25;
+            #}
+
+            $thevalue =
+              $greenhit /
+              ( $ghit + $greenhit + 1 ) *
+              ( 1 - $topweight +
+                  $topweight * $highit / ( $ghit + $greenhit + $highit + 1 ) )
+              * ( 1 - $pointvolumefactor * $firsthit / ( $aveg + 0.00001 ) )
+              **$pointvolumeexponent;
+
             if ( $thevalue > 0 ) {
-			for($gshade=0;$gshade<$#greenshades+1;$gshade++){
-			
-                if ( $thevalue >
-                    ( $greenlimit * $greenshades[$gshade] ) )
-                {
-                    $greenshade = $gshade+1;
-                }
-			
-			}
-			if($greenshade>0){
+                for ( $gshade = 0 ; $gshade < $#greenshades + 1 ; $gshade++ ) {
 
-$imggr1->filledRectangle($block/2+$x * $block-$addition,-$block/2+( $h - $y ) * $block-$addition,$block/2+$x * $block+$block-1+$addition,-$block/2+( $h - $y ) * $block+$block-1+$addition,$gr1[$greenshade-1]);
-   }
-   }
+                    if ( $thevalue > ( $greenlimit * $greenshades[$gshade] ) ) {
+                        $greenshade = $gshade + 1;
+                    }
+
+                }
+                if ( $greenshade > 0 ) {
+
+                    $imggr1->filledRectangle(
+                        $block / 2 + $x * $block - $addition,
+                        -$block / 2 + ( $h - $y ) * $block - $addition,
+                        $block / 2 + $x * $block + $block - 1 + $addition,
+                        -$block / 2 +
+                          ( $h - $y ) * $block +
+                          $block - 1 +
+                          $addition,
+                        $gr1[ $greenshade - 1 ]
+                    );
+                }
+            }
 
         }
 
@@ -4108,56 +4184,62 @@ $imggr1->filledRectangle($block/2+$x * $block-$addition,-$block/2+( $h - $y ) * 
 
     print "..";
 
-
     $imgye2->transparent($wh2);
 
-	# median filter
-	for($y=0;$y<$h * $block-$med;$y++){
-	undef @v;$k=0;
-	for($x=$med;$x<$w * $block-$med;$x++){
-		
-	#for($i=-$med/2;$i<$med/2;$i++){
-	for($j=-$med/2;$j<$med/2;$j++){
-	                                        
-	$v[$k]=$imggr1->getPixel( floor($x+$med/2),floor($y+$j+.5) );
-	$k++;
-	}
-	if($k>$med*$med-1){
-	$k=0;
-	}
-	#}
-    @w=sort {$a <=> $b} @v;
-	
-	$imggr1b->setPixel($x,$y,$w[$#w/2]);
-	}
-	}
-	#
-	# median filter 2
-	
-	if($med2>0){
-	for($y=0;$y<$h * $block-$med2;$y++){
-	undef @v;$k=0;
-	for($x=$med2;$x<$w * $block-$med2;$x++){
-		
-	#for($i=-$med/2;$i<$med/2;$i++){
-	for($j=-$med2/2;$j<$med2/2;$j++){
-	                                        
-	$v[$k]=$imggr1b->getPixel( floor($x+$med2/2),floor($y+$j+.5) );
-	$k++;
-	}
-	if($k>$med2*$med2-1){
-	$k=0;
-	}
-	#}
-    @w=sort {$a <=> $b} @v;
-	
-	$imggr1->setPixel($x,$y,$w[$#w/2]);
-	}
-	}
-	}else{
-	#
-    $imggr1->copy( $imggr1b, 0, 0, 0, 0, $w * $block, $h * $block );
-	}
+    # median filter
+    for ( $y = 0 ; $y < $h * $block - $med ; $y++ ) {
+        undef @v;
+        $k = 0;
+        for ( $x = $med ; $x < $w * $block - $med ; $x++ ) {
+
+            #for($i=-$med/2;$i<$med/2;$i++){
+            for ( $j = -$med / 2 ; $j < $med / 2 ; $j++ ) {
+
+                $v[$k] = $imggr1->getPixel( floor( $x + $med / 2 ),
+                    floor( $y + $j + .5 ) );
+                $k++;
+            }
+            if ( $k > $med * $med - 1 ) {
+                $k = 0;
+            }
+
+            #}
+            @w = sort { $a <=> $b } @v;
+
+            $imggr1b->setPixel( $x, $y, $w[ $#w / 2 ] );
+        }
+    }
+    #
+    # median filter 2
+
+    if ( $med2 > 0 ) {
+        for ( $y = 0 ; $y < $h * $block - $med2 ; $y++ ) {
+            undef @v;
+            $k = 0;
+            for ( $x = $med2 ; $x < $w * $block - $med2 ; $x++ ) {
+
+                #for($i=-$med/2;$i<$med/2;$i++){
+                for ( $j = -$med2 / 2 ; $j < $med2 / 2 ; $j++ ) {
+
+                    $v[$k] = $imggr1b->getPixel( floor( $x + $med2 / 2 ),
+                        floor( $y + $j + .5 ) );
+                    $k++;
+                }
+                if ( $k > $med2 * $med2 - 1 ) {
+                    $k = 0;
+                }
+
+                #}
+                @w = sort { $a <=> $b } @v;
+
+                $imggr1->setPixel( $x, $y, $w[ $#w / 2 ] );
+            }
+        }
+    }
+    else {
+        #
+        $imggr1->copy( $imggr1b, 0, 0, 0, 0, $w * $block, $h * $block );
+    }
     $imggr1->copy( $imgye2, 0, 0, 0, 0, $w * $block, $h * $block );
 
     $black = $imgwater->colorAllocate( 0,  0,   0 );
@@ -4247,35 +4329,82 @@ $imggr1->filledRectangle($block/2+$x * $block-$addition,-$block/2+( $h - $y ) * 
 
         close SISAAN;
     }
-	
-	## undergrowth
-	    $uqwhite = $imgug->colorAllocate( 255, 255,  255 );
-    $underg  = $imgug->colorAllocate( 64, 121, 0 );
-	$tmpfacor= 600 / 254 /$scalefactor;
-	for($x=0;$x<$w*$block;$x=$x+$block*6){
-	for($y=0;$y<$h*$block;$y=$y+$block*6){
-	if($ug[$x/$block/6][$y/$block/6]/($ug[$x/$block/6][$y/$block/6]+$ugg[$x/$block/6][$y/$block/6]+0.01) >$uglimit){
 
-	 $imgug->line($tmpfacor*($x+$block*3),$tmpfacor*($h*$block-$y-$block*3),$tmpfacor*($x+$block*3),$tmpfacor*($h*$block-$y+$block*3), $underg);
-	 $imgug->line($tmpfacor*($x+$block*3)+1,$tmpfacor*($h*$block-$y-$block*3),$tmpfacor*($x+$block*3)+1,$tmpfacor*($h*$block-$y+$block*3), $underg);
-	 
-	 $imgug->line($tmpfacor*($x-$block*3),$tmpfacor*($h*$block-$y-$block*3),$tmpfacor*($x-$block*3),$tmpfacor*($h*$block-$y+$block*3), $underg);
-	 $imgug->line($tmpfacor*($x-$block*3)+1,$tmpfacor*($h*$block-$y-$block*3),$tmpfacor*($x-$block*3)+1,$tmpfacor*($h*$block-$y+$block*3), $underg);
-				
-	 }
-	 	if($ug[$x/$block/6][$y/$block/6]/($ug[$x/$block/6][$y/$block/6]+$ugg[$x/$block/6][$y/$block/6]+0.01) >$uglimit2){
+    ## undergrowth
+    $uqwhite  = $imgug->colorAllocate( 255, 255, 255 );
+    $underg   = $imgug->colorAllocate( 64,  121, 0 );
+    $tmpfacor = 600 / 254 / $scalefactor;
+    for ( $x = 0 ; $x < $w * $block ; $x = $x + $block * 6 ) {
+        for ( $y = 0 ; $y < $h * $block ; $y = $y + $block * 6 ) {
+            if (
+                $ug[ $x / $block / 6 ][ $y / $block / 6 ] / (
+                    $ug[ $x / $block / 6 ][ $y / $block / 6 ] +
+                      $ugg[ $x / $block / 6 ][ $y / $block / 6 ] + 0.01
+                ) > $uglimit
+              )
+            {
 
-	 $imgug->line($tmpfacor*$x,$tmpfacor*($h*$block-$y-$block*3),$tmpfacor*($x),$tmpfacor*($h*$block-$y+$block*3), $underg);
-	 $imgug->line($tmpfacor*$x+1,$tmpfacor*($h*$block-$y-$block*3),$tmpfacor*($x)+1,$tmpfacor*($h*$block-$y+$block*3), $underg);				
-	 }
-	}
-	}
-	$imgug->transparent($uqwhite);
-	 $underg  = $imggr1->colorAllocate( 64, 121, 0 );
-#$imggr1->copy( $imgug, 0, 0, 0, 0, $w * $block, $h * $block );
-	## undegrowth
-	
-	
+                $imgug->line(
+                    $tmpfacor * ( $x + $block * 3 ),
+                    $tmpfacor * ( $h * $block - $y - $block * 3 ),
+                    $tmpfacor * ( $x + $block * 3 ),
+                    $tmpfacor * ( $h * $block - $y + $block * 3 ),
+                    $underg
+                );
+                $imgug->line(
+                    $tmpfacor * ( $x + $block * 3 ) + 1,
+                    $tmpfacor * ( $h * $block - $y - $block * 3 ),
+                    $tmpfacor * ( $x + $block * 3 ) + 1,
+                    $tmpfacor * ( $h * $block - $y + $block * 3 ),
+                    $underg
+                );
+
+                $imgug->line(
+                    $tmpfacor * ( $x - $block * 3 ),
+                    $tmpfacor * ( $h * $block - $y - $block * 3 ),
+                    $tmpfacor * ( $x - $block * 3 ),
+                    $tmpfacor * ( $h * $block - $y + $block * 3 ),
+                    $underg
+                );
+                $imgug->line(
+                    $tmpfacor * ( $x - $block * 3 ) + 1,
+                    $tmpfacor * ( $h * $block - $y - $block * 3 ),
+                    $tmpfacor * ( $x - $block * 3 ) + 1,
+                    $tmpfacor * ( $h * $block - $y + $block * 3 ),
+                    $underg
+                );
+
+            }
+            if (
+                $ug[ $x / $block / 6 ][ $y / $block / 6 ] / (
+                    $ug[ $x / $block / 6 ][ $y / $block / 6 ] +
+                      $ugg[ $x / $block / 6 ][ $y / $block / 6 ] + 0.01
+                ) > $uglimit2
+              )
+            {
+
+                $imgug->line(
+                    $tmpfacor * $x,
+                    $tmpfacor * ( $h * $block - $y - $block * 3 ),
+                    $tmpfacor * ($x),
+                    $tmpfacor * ( $h * $block - $y + $block * 3 ),
+                    $underg
+                );
+                $imgug->line(
+                    $tmpfacor * $x + 1,
+                    $tmpfacor * ( $h * $block - $y - $block * 3 ),
+                    $tmpfacor * ($x) + 1,
+                    $tmpfacor * ( $h * $block - $y + $block * 3 ),
+                    $underg
+                );
+            }
+        }
+    }
+    $imgug->transparent($uqwhite);
+    $underg = $imggr1->colorAllocate( 64, 121, 0 );
+
+    #$imggr1->copy( $imgug, 0, 0, 0, 0, $w * $block, $h * $block );
+    ## undegrowth
 
     open( ULOS, ">" . $tempfolder . "blueblack.png" );
     binmode ULOS;
@@ -4286,12 +4415,12 @@ $imggr1->filledRectangle($block/2+$x * $block-$addition,-$block/2+( $h - $y ) * 
     binmode ULOS;
     print ULOS $imggr1->png;
     close ULOS;
-	
+
     open( ULOS, ">" . $tempfolder . "undergrowth.png" );
     binmode ULOS;
     print ULOS $imgug->png;
     close ULOS;
-	
+
     open( ULOS, ">" . $tempfolder . "vegetation.pgw" );
     print ULOS "1.0
 0.0
@@ -4303,30 +4432,30 @@ $ymax
 
     close ULOS;
 
-	    open( ULOS, ">" . $tempfolder . "undergrowth.pgw" );
-    print ULOS "".(1/$tmpfacor)."
+    open( ULOS, ">" . $tempfolder . "undergrowth.pgw" );
+    print ULOS "" . ( 1 / $tmpfacor ) . "
 0.0
 0.0
--".(1/$tmpfacor)."
+-" . ( 1 / $tmpfacor ) . "
 $xmin
 $ymax
 ";
 
     close ULOS;
-	
+
     print "..... done.";
 }
 
 #####
-if($command eq 'makeheight'){
+if ( $command eq 'makeheight' ) {
 
-	$block =3; # = 1 * $Config->{_}->{'blocksize'};
+    $block = 3;    # = 1 * $Config->{_}->{'blocksize'};
     open( SISAAN, "<" . $tempfolder . "xyz2.xyz" );
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -4352,15 +4481,15 @@ if($command eq 'makeheight'){
             $ymax = floor( ( $r[1] - $ystart ) / $size );
         }
         $c++;
-		}
-		
-		    $xyzin = 'xyztemp.xyz';
+    }
+
+    $xyzin = 'xyztemp.xyz';
 
     print "..";
-    
+
     open( SISAAN, "<" . $tempfolder . "$xyzin" );
-	    while ( $rec = <SISAAN> ) {
-	  @r = split( / /, $rec );
+    while ( $rec = <SISAAN> ) {
+        @r = split( / /, $rec );
         if ( $r[2] > $top[ floor( ( $r[0] - $xstart ) / $block ) ]
             [ floor( ( $r[1] - $ystart ) / $block ) ] )
         {
@@ -4369,31 +4498,41 @@ if($command eq 'makeheight'){
         }
     }
     print "..";
-	
-    $w = floor( $xmax - $xmin )*$size / $block;
-    $h = floor( $ymax - $ymin )*$size / $block;
 
-	    use GD;
+    $w = floor( $xmax - $xmin ) * $size / $block;
+    $h = floor( $ymax - $ymin ) * $size / $block;
 
-    $imggr1 = new GD::Image( $w * $block, $h * $block ,1);
-	
-	    for ( $x = 0 ; $x < $w ; $x++ ) {
+    use GD;
+
+    $imggr1 = new GD::Image( $w * $block, $h * $block, 1 );
+
+    for ( $x = 0 ; $x < $w ; $x++ ) {
 
         for ( $y = 0 ; $y < $h ; $y++ ) {
-		$tone=($top[$x][$y]-$xyz[floor(0.5+$x*3/2)][floor(0.5+$y*3/2)])*5;
-		#print ''.$top[$x][$y].' - '.$xyz[floor(0.5+$x*3/2)][floor(0.5+$y*3/2)]."\n";
-		if($tone>255){$tone=255;}
-		if($tone<1){$tone=0;}
-		$imggr1->filledRectangle($x * $block,( $h - $y ) * $block,$block+$x * $block-1,( $h - $y ) * $block+$block-1,$imggr1->colorAllocate( $tone, $tone,$tone));
+            $tone =
+              ( $top[$x][$y] -
+                  $xyz[ floor( 0.5 + $x * 3 / 2 ) ][ floor( 0.5 + $y * 3 / 2 ) ]
+              ) * 5;
 
-		}
-		}
-		
-		    open( ULOS, ">height.png" );
+   #print ''.$top[$x][$y].' - '.$xyz[floor(0.5+$x*3/2)][floor(0.5+$y*3/2)]."\n";
+            if ( $tone > 255 ) { $tone = 255; }
+            if ( $tone < 1 )   { $tone = 0; }
+            $imggr1->filledRectangle(
+                $x * $block,
+                ( $h - $y ) * $block,
+                $block + $x * $block - 1,
+                ( $h - $y ) * $block + $block - 1,
+                $imggr1->colorAllocate( $tone, $tone, $tone )
+            );
+
+        }
+    }
+
+    open( ULOS, ">height.png" );
     binmode ULOS;
     print ULOS $imggr1->png;
     close ULOS;
-	
+
 }
 ####################################
 if ( $command eq 'makevege' ) {
@@ -4745,7 +4884,7 @@ if ( $command eq 'xyz2contours' ) {
 
     while ( $rec = <SISAAN> ) {
         @r = split( / /, $rec );
-        if ( ($r[3] == 2 || $r[3] == $water) || $ground != 1 ) {
+        if ( ( $r[3] == 2 || $r[3] == $water ) || $ground != 1 ) {
             if ( $xmin ne '' ) {
                 if ( $r[0] < $xmin ) { $xmin = $r[0]; }
             }
@@ -4780,8 +4919,8 @@ if ( $command eq 'xyz2contours' ) {
     #    $hmax
     #";
 
-    $xmin = floor( $xmin / 2 /$scalefactor) * 2*$scalefactor;
-    $ymin = floor( $ymin / 2 /$scalefactor) * 2*$scalefactor;
+    $xmin = floor( $xmin / 2 / $scalefactor ) * 2 * $scalefactor;
+    $ymin = floor( $ymin / 2 / $scalefactor ) * 2 * $scalefactor;
 
     open( SISAAN, "<" . $tempfolder . "$xyzfilein" );
 
@@ -4790,17 +4929,17 @@ if ( $command eq 'xyz2contours' ) {
         @r = split( / /, $rec );
         $i = 0;
         $j = 0;
-        if ( ($r[3] == 2 || $r[3] == $water)|| $ground != 1 ) {
+        if ( ( $r[3] == 2 || $r[3] == $water ) || $ground != 1 ) {
 
-            $m[ floor( $r[0] - $xmin ) / 2 /$scalefactor][ floor( $r[1] - $ymin ) / 2/$scalefactor ] .=
-              '|' . $r[2];
+            $m[ floor( $r[0] - $xmin ) / 2 / $scalefactor ]
+              [ floor( $r[1] - $ymin ) / 2 / $scalefactor ] .= '|' . $r[2];
 
         }
 
     }
     close SISAAN;
-    $w = floor( $xmax - $xmin ) / 2/$scalefactor;
-    $h = floor( $ymax - $ymin ) / 2/$scalefactor;
+    $w = floor( $xmax - $xmin ) / 2 / $scalefactor;
+    $h = floor( $ymax - $ymin ) / 2 / $scalefactor;
     undef @d;
 ####
     for ( $x = 0 ; $x < $w + 1 ; $x++ ) {
@@ -4864,12 +5003,14 @@ if ( $command eq 'xyz2contours' ) {
                 if ( $m[$i1][$y] ne '' && $m[$i2][$y] ne '' ) {
                     $val1 =
                       ( ( $i2 - $x ) * $m[$i1][$y] +
-                          ( $x - $i1 ) * $m[$i2][$y] ) / ( $i2 - $i1 );
+                          ( $x - $i1 ) * $m[$i2][$y] ) /
+                      ( $i2 - $i1 );
                 }
                 if ( $m[$x][$j1] ne '' && $m[$x][$j2] ne '' ) {
                     $val2 =
                       ( ( $j2 - $y ) * $m[$x][$j1] +
-                          ( $y - $j1 ) * $m[$x][$j2] ) / ( $j2 - $j1 );
+                          ( $y - $j1 ) * $m[$x][$j2] ) /
+                      ( $j2 - $j1 );
                 }
 
                 if ( $val1 ne '' ) {
@@ -4936,7 +5077,7 @@ if ( $command eq 'xyz2contours' ) {
     for ( $x = 0 ; $x < $w + 1 ; $x++ ) {
 
         for ( $y = 0 ; $y < $h + 1 ; $y++ ) {
-            $ele = $m[$x][$y];
+            $ele  = $m[$x][$y];
             $temp = ( floor( ( $ele / $cinterval + 0.5 ) ) * $cinterval );
             if ( abs( $ele - $temp ) < 0.02 ) {
                 if ( $$ele - $temp < 0 ) {
@@ -4958,8 +5099,8 @@ if ( $command eq 'xyz2contours' ) {
                 $ele = $m[$x][$y];
 
                 print ULOS ''
-                  . ( $x * 2 *$scalefactor+ $xmin ) . ' '
-                  . ( $y * 2 *$scalefactor+ $ymin ) . ' '
+                  . ( $x * 2 * $scalefactor + $xmin ) . ' '
+                  . ( $y * 2 * $scalefactor + $ymin ) . ' '
                   . $ele . "\n";
             }
 
@@ -5353,8 +5494,8 @@ cont
             if ( $rec ne "" ) {
 
                 ( $x, $y ) = split( /\,/, $rec );
-                $y = $scalefactor *  2 * $y + $ymin;
-                $x = $scalefactor *2 * $x + $xmin;
+                $y = $scalefactor * 2 * $y + $ymin;
+                $x = $scalefactor * 2 * $x + $xmin;
                 print ULOS "VERTEX
   8
 cont
@@ -5605,8 +5746,8 @@ if ( $command eq 'cliffgeneralize' ) {
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -5690,8 +5831,8 @@ if ( $command eq 'cliffgeneralize' ) {
             $rec = join( 'VERTEX', @r );
             $rec =~ s/VERTEXVERTEX/VERTEX/g;
 
-            @val  = split( /\n/, $r[1] );
-            @val2 = split( /\n/, $r[$#r] );
+            @val         = split( /\n/, $r[1] );
+            @val2        = split( /\n/, $r[$#r] );
             $val[$xline] = ( $val[$xline] + $val2[$xline] ) / 2;
             $val[$yline] = ( $val[$yline] + $val2[$yline] ) / 2;
 
@@ -5752,8 +5893,8 @@ if ( $command eq 'cliffgeneralize' ) {
             $rec = join( 'VERTEX', @r );
             $rec =~ s/VERTEXVERTEX/VERTEX/g;
 
-            @val  = split( /\n/, $r[1] );
-            @val2 = split( /\n/, $r[$#r] );
+            @val         = split( /\n/, $r[1] );
+            @val2        = split( /\n/, $r[$#r] );
             $val[$xline] = ( $val[$xline] + $val2[$xline] ) / 2;
             $val[$yline] = ( $val[$yline] + $val2[$yline] ) / 2;
 
@@ -5803,8 +5944,8 @@ if ( $command eq 'cliffgeneralize' ) {
             $rec = join( 'VERTEX', @r );
             $rec =~ s/VERTEXVERTEX/VERTEX/g;
 
-            @val  = split( /\n/, $r[1] );
-            @val2 = split( /\n/, $r[$#r] );
+            @val         = split( /\n/, $r[1] );
+            @val2        = split( /\n/, $r[$#r] );
             $val[$xline] = ( $val[$xline] + $val2[$xline] ) / 2;
             $val[$yline] = ( $val[$yline] + $val2[$yline] ) / 2;
 
@@ -5831,7 +5972,7 @@ if ( $command eq 'xyzfixer' ) {
     close SISAAN;
 
     foreach $rec (@d) {
-        @r = split( / /, $rec );
+        @r    = split( / /, $rec );
         $temp = ( floor( ( $r[2] / $interval + 0.5 ) ) * $interval );
         if ( abs( $r[2] - $temp ) < 0.05 ) {
             if ( $r[2] - $temp < 0 ) {
@@ -5851,7 +5992,7 @@ if ( $command eq 'xyzfixer' ) {
     close ULOS;
 
 ############ for 0.3 m contours #######
-    $interval = 0.3*$scalefactor;    # contour interval
+    $interval = 0.3 * $scalefactor;    # contour interval
 
     use POSIX;
     open( SISAAN, "<" . $tempfolder . "xyz.xyz" );
@@ -5859,7 +6000,7 @@ if ( $command eq 'xyzfixer' ) {
     close SISAAN;
 
     foreach $rec (@d) {
-        @r = split( / /, $rec );
+        @r    = split( / /, $rec );
         $temp = ( floor( ( $r[2] / $interval + 0.5 ) ) * $interval );
         if ( abs( $r[2] - $temp ) < 0.01 ) {
             if ( $r[2] - $temp < 0 ) {
@@ -5886,14 +6027,14 @@ if ( $command eq 'knolldetector' ) {
 
     print ".";
 
-    $interval = 0.3*$scalefactor;
+    $interval = 0.3 * $scalefactor;
 
     open( SISAAN, "<" . $tempfolder . "xyz_03.xyz" );
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -6232,10 +6373,10 @@ ENTITIES
                             $h1 * (
                                 floor( ( $y[$m] - $ystart ) / $size ) + 1 -
                                   ( ( $y[$m] - $ystart ) / $size )
-                              ) + $h2 * (
+                            ) + $h2 * (
                                 ( ( $y[$m] - $ystart ) / $size ) -
                                   floor( ( $y[$m] - $ystart ) / $size )
-                              )
+                            )
                         );
                         $h = ( floor( $h / $interval + 0.5 ) * $interval );
 
@@ -6244,9 +6385,10 @@ ENTITIES
                         #  . "\n";
                         $m = $#x + 1;
                     }
-                    if ( $m < $#x -2
+                    if ( $m < $#x - 2
                         && ( $y[$m] - $ystart ) / $size ==
-                        floor( ( $y[$m] - $ystart ) / $size ) && ( $x[$m] - $xstart ) / $size !=
+                        floor( ( $y[$m] - $ystart ) / $size )
+                        && ( $x[$m] - $xstart ) / $size !=
                         floor( ( $x[$m] - $xstart ) / $size ) )
                     {
                         $h1 =
@@ -6259,10 +6401,10 @@ ENTITIES
                             $h1 * (
                                 floor( ( $x[$m] - $xstart ) / $size ) + 1 -
                                   ( ( $x[$m] - $xstart ) / $size )
-                              ) + $h2 * (
+                            ) + $h2 * (
                                 ( ( $x[$m] - $xstart ) / $size ) -
                                   floor( ( $x[$m] - $xstart ) / $size )
-                              )
+                            )
                         );
                         $h = ( floor( $h / $interval + 0.5 ) * $interval );
 
@@ -6283,9 +6425,10 @@ ENTITIES
                 $yave = $y[$m];
                 while ( $m < $#x + 1 ) {
 
-                    if ( $m < $#x -2
+                    if ( $m < $#x - 2
                         && ( $y[$m] - $ystart ) / $size ==
-                        floor( ( $y[$m] - $ystart ) / $size ) && ( $x[$m] - $xstart ) / $size !=
+                        floor( ( $y[$m] - $ystart ) / $size )
+                        && ( $x[$m] - $xstart ) / $size !=
                         floor( ( $x[$m] - $xstart ) / $size ) )
                     {
                         $xave =
@@ -6302,9 +6445,11 @@ ENTITIES
 
                 $hit = 0;
 
-                $xtest = floor( ( $xave - $xstart ) / $size ) * $size + $xstart+0.000000001;
+                $xtest = floor( ( $xave - $xstart ) / $size ) * $size +
+                  $xstart + 0.000000001;
 
-                $ytest = floor( ( $yave - $ystart ) / $size ) * $size + $ystart+0.000000001;
+                $ytest = floor( ( $yave - $ystart ) / $size ) * $size +
+                  $ystart + 0.000000001;
 
                 $n = -1;
                 while ( $n < $#x ) {
@@ -6318,9 +6463,9 @@ ENTITIES
                                    ( ( $y0 <= $ytest ) and ( $ytest < $y1 ) )
                                 or ( ( $y1 <= $ytest ) and ( $ytest < $y0 ) )
                             )
-                            and ( $xtest <
-                                ( $x1 - $x0 ) * ( $ytest - $y0 ) / ( $y1 - $y0 )
-                                + $x0 )
+                            and ( $xtest < ( $x1 - $x0 ) *
+                                ( $ytest - $y0 ) /
+                                ( $y1 - $y0 ) + $x0 )
                           )
                         {
                             $hit++;
@@ -6396,8 +6541,8 @@ ENTITIES
         if ( $elex[$l] ne '' ) {
 
             # print "$l / $j\n";
-            @x = split( /\|/, $elex[$l] );
-            @y = split( /\|/, $eley[$l] );
+            @x            = split( /\|/, $elex[$l] );
+            @y            = split( /\|/, $eley[$l] );
             $x[ $#x + 1 ] = $x[0];
             $y[ $#y + 1 ] = $y[0];
             $minx         = 999999999;
@@ -6490,8 +6635,8 @@ ENTITIES
         if ( $elex[$l] ne '' ) {
 
             #print "$l / $j\n";
-            @x = split( /\|/, $elex[$l] );
-            @y = split( /\|/, $eley[$l] );
+            @x            = split( /\|/, $elex[$l] );
+            @y            = split( /\|/, $eley[$l] );
             $x[ $#x + 1 ] = $x[0];
             $y[ $#y + 1 ] = $y[0];
 
@@ -6616,7 +6761,7 @@ ENTITIES
 
 ##
     @candidates = split( /\n/, $temp );
-    $temp = '';
+    $temp       = '';
     foreach $head (@candidates) {
         ( $id, $xtest, $ytest, $topid ) = split( /\,/, $head );
         @x = split( /\|/, $elex[$id] );
@@ -6655,8 +6800,8 @@ ENTITIES
         $skip = 0;
         if ( $elex[$l] ne '' ) {
 
-            @x = split( /\|/, $elex[$l] );
-            @y = split( /\|/, $eley[$l] );
+            @x            = split( /\|/, $elex[$l] );
+            @y            = split( /\|/, $eley[$l] );
             $x[ $#x + 1 ] = $x[0];
             $y[ $#y + 1 ] = $y[0];
 
@@ -6787,7 +6932,7 @@ EOF
 
 if ( $command eq 'xyzknolls' ) {
 
-    $interval = 2.5*$scalefactor;    # contour interval
+    $interval = 2.5 * $scalefactor;    # contour interval
 
     open( SISAAN, "<" . $tempfolder . "pins.txt" );
     @pins = <SISAAN>;
@@ -6797,8 +6942,8 @@ if ( $command eq 'xyzknolls' ) {
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -6895,8 +7040,8 @@ if ( $command eq 'xyzknolls' ) {
         $x = floor( ( $x - $xstart ) / $size );
         $y = floor( ( $y - $ystart ) / $size );
 
-        @x = split( / /, $xlist );
-        @y = split( / /, $ylist );
+        @x            = split( / /, $xlist );
+        @y            = split( / /, $ylist );
         $x[ $#x + 1 ] = $x[0];
         $y[ $#y + 1 ] = $y[0];
 
@@ -6913,9 +7058,9 @@ if ( $command eq 'xyzknolls' ) {
             $move = $move - 0.4;
         }
 
-        if ( ( $elenew - $ele ) > 1.50 *$scalefactor)
+        if ( ( $elenew - $ele ) > 1.50 * $scalefactor )
         { #resize low, close to lower contour elevation knolls smaller to make it look less violent.
-                #print "($#x)";
+             #print "($#x)";
             if ( $#x > 20 ) {
                 for ( $k = 0 ; $k < $#x + 1 ; $k++ ) {
                     $x[$k] = $xx + ( $x[$k] - $xx ) * 0.8;
@@ -6965,9 +7110,9 @@ if ( $command eq 'xyzknolls' ) {
                                    ( ( $y0 <= $ytest ) and ( $ytest < $y1 ) )
                                 or ( ( $y1 <= $ytest ) and ( $ytest < $y0 ) )
                             )
-                            and ( $xtest <
-                                ( $x1 - $x0 ) * ( $ytest - $y0 ) / ( $y1 - $y0 )
-                                + $x0 )
+                            and ( $xtest < ( $x1 - $x0 ) *
+                                ( $ytest - $y0 ) /
+                                ( $y1 - $y0 ) + $x0 )
                           )
                         {
                             $hit++;
@@ -6997,7 +7142,7 @@ if ( $command eq 'xyzknolls' ) {
         }
 ####
 
-        $sivu = ($dist{$l} * 0.8 - 1);
+        $sivu = ( $dist{$l} * 0.8 - 1 );
         if ( $sivu < 1 )  { $sivu = 1; }
         if ( $sivu > 12 ) { $sivu = 12; }
 
@@ -7008,8 +7153,7 @@ if ( $command eq 'xyzknolls' ) {
                   ( $sivu - abs( $xx - $ii ) ) /
                   $sivu *
                   ( $sivu - abs( $yy - $jj ) ) /
-                  $sivu *
-                  $move2;
+                  $sivu * $move2;
 
                 if ( $ii > 0 && $ii < $xmax + 1 && $jj > 0 && $jj < $ymax + 1 )
                 {
@@ -7056,14 +7200,14 @@ if ( $command eq 'smoothjoin' ) {
 
     #print "grid\n";
 
-    $interval = 2.5*$scalefactor;
+    $interval = 2.5 * $scalefactor;
 
     open( SISAAN, "<" . $tempfolder . "xyz_knolls.xyz" );
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -7382,19 +7526,20 @@ ENTITIES
                             $h1 * (
                                 floor( ( $y[$m] - $ystart ) / $size ) + 1 -
                                   ( ( $y[$m] - $ystart ) / $size )
-                              ) + $h2 * (
+                            ) + $h2 * (
                                 ( ( $y[$m] - $ystart ) / $size ) -
                                   floor( ( $y[$m] - $ystart ) / $size )
-                              )
+                            )
                         );
 
                         $h = ( floor( $h / $interval + 0.5 ) * $interval );
                         $m = $#x + 1;
                     }
-                    if ( $m < $#x -2
+                    if ( $m < $#x - 2
                         && ( $y[$m] - $ystart ) / $size ==
-                        floor( ( $y[$m] - $ystart ) / $size ) && ( $x[$m] - $xstart ) / $size !=
-                        floor( ( $x[$m] - $xstart ) / $size ))
+                        floor( ( $y[$m] - $ystart ) / $size )
+                        && ( $x[$m] - $xstart ) / $size !=
+                        floor( ( $x[$m] - $xstart ) / $size ) )
                     {
                         $h1 =
                           $xyz[ floor( ( $x[$m] - $xstart ) / $size ) ]
@@ -7406,10 +7551,10 @@ ENTITIES
                             $h1 * (
                                 floor( ( $x[$m] - $xstart ) / $size ) + 1 -
                                   ( ( $x[$m] - $xstart ) / $size )
-                              ) + $h2 * (
+                            ) + $h2 * (
                                 ( ( $x[$m] - $xstart ) / $size ) -
                                   floor( ( $x[$m] - $xstart ) / $size )
-                              )
+                            )
                         );
                         $h = ( floor( $h / $interval + 0.5 ) * $interval );
 
@@ -7437,10 +7582,19 @@ ENTITIES
                 $yave = $y[$m];
                 while ( $m < $#x + 1 ) {
 
-                    if ( $m < $#x-2
+                    if (
+                        $m < $#x - 2
                         && ( $y[$m] - $ystart ) / $size ==
-                        floor( ( $y[$m] - $ystart ) / $size ) && abs(( $x[$m] - $xstart ) / $size - floor( ( $x[$m] - $xstart ) / $size )) > 0.5
-                         && floor( ( $y[$m] - $ystart ) / $size ) != floor( ( $y[0] - $ystart ) / $size ) && floor( ( $x[$m] - $xstart ) / $size ) != floor( ( $x[0] - $xstart ) / $size ))
+                        floor( ( $y[$m] - $ystart ) / $size )
+                        && abs(
+                            ( $x[$m] - $xstart ) / $size -
+                              floor( ( $x[$m] - $xstart ) / $size )
+                        ) > 0.5
+                        && floor( ( $y[$m] - $ystart ) / $size ) !=
+                        floor( ( $y[0] - $ystart ) / $size )
+                        && floor( ( $x[$m] - $xstart ) / $size ) !=
+                        floor( ( $x[0] - $xstart ) / $size )
+                      )
                     {
 
                         $xave =
@@ -7451,8 +7605,8 @@ ENTITIES
                     }
                     $m++;
                 }
-$foox=floor( ( $xave - $xstart ) / $size );
-$fooy=floor( ( $yave - $ystart ) / $size );
+                $foox = floor( ( $xave - $xstart ) / $size );
+                $fooy = floor( ( $yave - $ystart ) / $size );
 
                 $h_center =
                   $xyz[ floor( ( $xave - $xstart ) / $size ) ]
@@ -7477,9 +7631,9 @@ $fooy=floor( ( $yave - $ystart ) / $size );
                                    ( ( $y0 <= $ytest ) and ( $ytest < $y1 ) )
                                 or ( ( $y1 <= $ytest ) and ( $ytest < $y0 ) )
                             )
-                            and ( $xtest <
-                                ( $x1 - $x0 ) * ( $ytest - $y0 ) / ( $y1 - $y0 )
-                                + $x0 )
+                            and ( $xtest < ( $x1 - $x0 ) *
+                                ( $ytest - $y0 ) /
+                                ( $y1 - $y0 ) + $x0 )
                           )
                         {
                             $hit++;
@@ -7490,7 +7644,7 @@ $fooy=floor( ( $yave - $ystart ) / $size );
 
                 }
 
-               # if ( $hit % 2 == 1 ) {
+                # if ( $hit % 2 == 1 ) {
 
                 #}
                 #else {
@@ -7519,35 +7673,38 @@ $fooy=floor( ( $yave - $ystart ) / $size );
                     $minele       = 9999999;
                     $maxele       = -9999999;
                     for ( $k = 0 ; $k < $#x ; $k++ ) {
-                        if ( $minele > $h - 0.5 *
-                            $steepness[ floor(
-                                  ( $x[$k] - $xstart ) / $size + 0.5 ) ]
-                            [ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ] )
+                        if (
+                            $minele > $h - 0.5 * $steepness[
+                            floor( ( $x[$k] - $xstart ) / $size + 0.5 )
+                            ][ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ]
+                          )
                         {
                             $minele =
-                              $h - 0.5 *
-                              $steepness[ floor(
-                                  ( $x[$k] - $xstart ) / $size + 0.5 ) ]
-                              [ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ];
-                        }
-
-                        if ( $maxele < $h + 0.5 *
-                            $steepness[ floor(
-                                  ( $x[$k] - $xstart ) / $size + 0.5 ) ]
-                            [ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ] )
-                        {
-                            $maxele =
-                              $h + 0.5 *
-                              $steepness[ floor(
+                              $h -
+                              0.5 * $steepness[ floor(
                                   ( $x[$k] - $xstart ) / $size + 0.5 ) ]
                               [ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ];
                         }
 
                         if (
-                            $steepness[ floor(
+                            $maxele < $h + 0.5 * $steepness[
+                            floor( ( $x[$k] - $xstart ) / $size + 0.5 )
+                            ][ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ]
+                          )
+                        {
+                            $maxele =
+                              $h +
+                              0.5 * $steepness[ floor(
                                   ( $x[$k] - $xstart ) / $size + 0.5 ) ]
-                            [ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ] >
-                            1 )
+                              [ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ];
+                        }
+
+                        if (
+                            $steepness[
+                            floor( ( $x[$k] - $xstart ) / $size + 0.5 )
+                            ][ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ] >
+                            1
+                          )
                         {
                             $steepcounter++;
                         }
@@ -7562,17 +7719,20 @@ $fooy=floor( ( $yave - $ystart ) / $size );
                         if ( $depression * $h_center - 1.9 < $minele )
                         {    # is center a lot above lowest point around?
 
-                            if ( $maxele - 0.45*$scalefactor * $inidotknolls < $minele )
+                            if ( $maxele - 0.45 * $scalefactor * $inidotknolls <
+                                $minele )
                             {    # is max-min how high?
                                 $skip = 1;
                             }
                             if (   $#x < 32
-                                && $maxele - 0.75*$scalefactor * $inidotknolls < $minele )
+                                && $maxele -
+                                0.75 * $scalefactor * $inidotknolls < $minele )
                             {    # is max-min how high?
                                 $skip = 1;
                             }
                             if (   $#x < 18
-                                && $maxele - 0.9*$scalefactor * $inidotknolls < $minele )
+                                && $maxele -
+                                0.9 * $scalefactor * $inidotknolls < $minele )
                             {    # is max-min how high?
                                 $skip = 1;
                             }
@@ -7639,14 +7799,15 @@ $fooy=floor( ( $yave - $ystart ) / $size );
                     $ypre = $y[0];
                     for ( $k = 1 ; $k < $#x ; $k++ ) {
                         if (
-                            $steepness[ floor(
-                                  ( $x[$k] - $xstart ) / $size + 0.5 ) ]
-                            [ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ] <
-                            0.5 )
+                            $steepness[
+                            floor( ( $x[$k] - $xstart ) / $size + 0.5 )
+                            ][ floor( ( $y[$k] - $ystart ) / $size + 0.5 ) ] <
+                            0.5
+                          )
                         {    # && $k>4 && $k<$#x-4
                             if (
                                 sqrt(
-                                    ( $xpre - $x[$k] ) *   ( $xpre - $x[$k] ) +
+                                    ( $xpre - $x[$k] ) * ( $xpre - $x[$k] ) +
                                       ( $ypre - $y[$k] ) * ( $ypre - $y[$k] )
                                 ) < 4
                               )
@@ -7706,11 +7867,13 @@ $fooy=floor( ( $yave - $ystart ) / $size );
                     $xa[$k] =
                       ( $x[ $k - 1 ] +
                           $x[$k] / ( 0.01 + $smoothing ) +
-                          $x[ $k + 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $x[ $k + 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                     $ya[$k] =
                       ( $y[ $k - 1 ] +
                           $y[$k] / ( 0.01 + $smoothing ) +
-                          $y[ $k + 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $y[ $k + 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                 }
                 if ( $x[0] == $x[$#x] && $y[0] == $y[$#x] ) {
                     $xa[0] =
@@ -7733,21 +7896,25 @@ $fooy=floor( ( $yave - $ystart ) / $size );
                     $x[$k] =
                       ( $xa[ $k - 1 ] +
                           $xa[$k] / ( 0.01 + $smoothing ) +
-                          $xa[ $k + 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $xa[ $k + 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                     $y[$k] =
                       ( $ya[ $k - 1 ] +
                           $ya[$k] / ( 0.01 + $smoothing ) +
-                          $ya[ $k + 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $ya[ $k + 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                 }
                 if ( $xa[0] == $xa[$#x] && $ya[0] == $ya[$#x] ) {
                     $x[0] =
                       ( $xa[1] +
                           $xa[0] / ( 0.01 + $smoothing ) +
-                          $xa[ $#x - 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $xa[ $#x - 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                     $y[0] =
                       ( $ya[1] +
                           $ya[0] / ( 0.01 + $smoothing ) +
-                          $ya[ $#x - 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $ya[ $#x - 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                     $x[$#x] = $x[0];
                     $y[$#x] = $y[0];
                 }
@@ -7762,11 +7929,13 @@ $fooy=floor( ( $yave - $ystart ) / $size );
                     $xa[$k] =
                       ( $x[ $k - 1 ] +
                           $x[$k] / ( 0.01 + $smoothing ) +
-                          $x[ $k + 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $x[ $k + 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                     $ya[$k] =
                       ( $y[ $k - 1 ] +
                           $y[$k] / ( 0.01 + $smoothing ) +
-                          $y[ $k + 1 ] ) / ( 2 + 1 / ( 0.01 + $smoothing ) );
+                          $y[ $k + 1 ] ) /
+                      ( 2 + 1 / ( 0.01 + $smoothing ) );
                 }
                 if ( $x[0] == $x[$#x] && $y[0] == $y[$#x] ) {
                     $xa[0] =
@@ -7894,14 +8063,14 @@ if ( $command eq 'dotknolls' ) {
 
     #print "grid\n";
 
-    $interval = 2.5*$scalefactor;
+    $interval = 2.5 * $scalefactor;
 
     open( SISAAN, "<" . $tempfolder . "xyz_knolls.xyz" );
     @d = <SISAAN>;
     close SISAAN;
 
-    @r1 = split( / /, $d[0] );
-    @r2 = split( / /, $d[1] );
+    @r1     = split( / /, $d[0] );
+    @r2     = split( / /, $d[1] );
     $size   = $r2[1] - $r1[1];
     $xstart = $r1[0];
     $ystart = $r1[1];
@@ -7922,7 +8091,8 @@ if ( $command eq 'dotknolls' ) {
 
     #print " $c points \n";
 
-    $im = new GD::Image( $xmax * $size/$scalefactor, $ymax * $size/$scalefactor );
+    $im = new GD::Image( $xmax * $size / $scalefactor,
+        $ymax * $size / $scalefactor );
     $white = $im->colorAllocate( 255, 255, 255 );
     $black = $im->colorAllocate( 0,   0,   0 );
 
@@ -8012,10 +8182,11 @@ ENTITIES
 
         for ( $i = 1 ; $i < $#x + 1 ; $i++ ) {
             $im->line(
-                ( $x[ $i - 1 ] - $xstart )/$scalefactor,
-                ( $y[ $i - 1 ] - $ystart )/$scalefactor,
-                ( $x[$i] - $xstart )/$scalefactor,
-                ( $y[$i] - $ystart )/$scalefactor, $black
+                ( $x[ $i - 1 ] - $xstart ) / $scalefactor,
+                ( $y[ $i - 1 ] - $ystart ) / $scalefactor,
+                ( $x[$i] - $xstart ) / $scalefactor,
+                ( $y[$i] - $ystart ) / $scalefactor,
+                $black
             );
         }
 
@@ -8026,10 +8197,20 @@ ENTITIES
         chomp($rec);
         ( $depression, $x, $y ) = split( / /, $rec );
         $ok = 1;
-        for ( $i = ($x  - $xstart)/$scalefactor- 3 ; $i < ($x - $xstart)/$scalefactor + 4 ; $i++ ) {
-            for ( $j = ($y- $ystart)/$scalefactor - 3 ; $j < ($y - $ystart)/$scalefactor+ 4 ; $j++ ) {
+        for (
+            $i = ( $x - $xstart ) / $scalefactor - 3 ;
+            $i < ( $x - $xstart ) / $scalefactor + 4 ;
+            $i++
+          )
+        {
+            for (
+                $j = ( $y - $ystart ) / $scalefactor - 3 ;
+                $j < ( $y - $ystart ) / $scalefactor + 4 ;
+                $j++
+              )
+            {
                 ( $r, $g, $b ) =
-                  $im->rgb( $im->getPixel( $i , $j) );
+                  $im->rgb( $im->getPixel( $i, $j ) );
                 if ( $r == 0 ) { $ok = 0; }
             }
         }
@@ -8082,8 +8263,8 @@ if ( $command eq 'render' ) {
     $nwidth = 1 * $ARGV[2];
 
     $maptype = $ARGV[3];
-	
-	$formlinesteepness=$formlinesteepness*$scalefactor;
+
+    $formlinesteepness = $formlinesteepness * $scalefactor;
 
     if ( $maptype eq 'nodepressions' ) {
         $nodepressions = 1;
@@ -8094,8 +8275,8 @@ if ( $command eq 'render' ) {
         @d = <SISAAN>;
         close SISAAN;
 
-        @r1 = split( / /, $d[0] );
-        @r2 = split( / /, $d[1] );
+        @r1     = split( / /, $d[0] );
+        @r2     = split( / /, $d[1] );
         $size   = $r2[1] - $r1[1];
         $xstart = $r1[0];
         $ystart = $r1[1];
@@ -8122,120 +8303,160 @@ if ( $command eq 'render' ) {
         }
         print "..";
 
-       # print "steepness\n";
-		
-		  for ( $i = 6 ; $i < $sxmax - 7 ; $i++ ) {
+        # print "steepness\n";
+
+        for ( $i = 6 ; $i < $sxmax - 7 ; $i++ ) {
             for ( $j = 6 ; $j < $symax - 7 ; $j++ ) {
                 $det  = 0;
                 $high = -999999999;
 
-				$temp=abs($xyz[$i-4][$j]-$xyz[$i][$j])/4;
-				$temp2=abs($xyz[$i][$j]-$xyz[$i+4][$j])/4;
-				$det2=abs($xyz[$i][$j]-0.5*($xyz[$i-4][$j]+$xyz[$i+4][$j]))-0.05*abs($xyz[$i-4][$j]-$xyz[$i+4][$j]);
-			    $porr=abs(abs(($xyz[$i-6][$j]-$xyz[$i+6][$j])/12)-abs(($xyz[$i-3][$j]-$xyz[$i+3][$j])/6));
-				
-				if($det2>$det){$det=$det2;}
-				if($temp2<$temp){$temp=$temp2;}
-				if($temp > $high){$high=$temp;}	
+                $temp  = abs( $xyz[ $i - 4 ][$j] - $xyz[$i][$j] ) / 4;
+                $temp2 = abs( $xyz[$i][$j] - $xyz[ $i + 4 ][$j] ) / 4;
+                $det2 =
+                  abs( $xyz[$i][$j] -
+                      0.5 * ( $xyz[ $i - 4 ][$j] + $xyz[ $i + 4 ][$j] ) ) -
+                  0.05 * abs( $xyz[ $i - 4 ][$j] - $xyz[ $i + 4 ][$j] );
+                $porr = abs(
+                    abs( ( $xyz[ $i - 6 ][$j] - $xyz[ $i + 6 ][$j] ) / 12 ) -
+                      abs( ( $xyz[ $i - 3 ][$j] - $xyz[ $i + 3 ][$j] ) / 6 ) );
 
-				$temp=abs($xyz[$i][$j-4]-$xyz[$i][$j])/4;
-				$temp2=abs($xyz[$i][$j]-$xyz[$i][$j-4])/4;
-				$det2=abs($xyz[$i][$j]-0.5*($xyz[$i][$j-4]+$xyz[$i][$j+4]))-0.05*abs($xyz[$i][$j-4]-$xyz[$i][$j+4]);
-				$porr2=abs(abs(($xyz[$i][$j-6]-$xyz[$i][$j+6])/12)-abs(($xyz[$i][$j-3]-$xyz[$i][$j+3]))/6);
-				if($porr2>$porr){$porr=$porr2;}
-				if($det2>$det){$det=$det2;}
-				if($temp2<$temp){$temp=$temp2;}
-				if($temp > $high){$high=$temp;}	
-				
-				$temp=abs($xyz[$i-4][$j-4]-$xyz[$i][$j])/5.6;
-				$temp2=abs($xyz[$i][$j]-$xyz[$i+4][$j+4])/5.6;
-				$det2=abs($xyz[$i][$j]-0.5*($xyz[$i-4][$j-4]+$xyz[$i+4][$j+4]))-0.05*abs($xyz[$i-4][$j-4]-$xyz[$i+4][$j+4]);
-				$porr2=abs(abs(($xyz[$i-6][$j-6]-$xyz[$i+6][$j+6])/17)-abs(($xyz[$i-3][$j-3]-$xyz[$i+3][$j+3])/8.5));
-				if($porr2>$porr){$porr=$porr2;}
-				
-				if($det2>$det){$det=$det2;}
-				if($temp2<$temp){$temp=$temp2;}
-				if($temp > $high){$high=$temp;}	
+                if ( $det2 > $det )   { $det  = $det2; }
+                if ( $temp2 < $temp ) { $temp = $temp2; }
+                if ( $temp > $high )  { $high = $temp; }
 
-				$temp=abs($xyz[$i-4][$j+4]-$xyz[$i][$j])/5.6;
-				$temp2=abs($xyz[$i][$j]-$xyz[$i+4][$j-4])/5.6;
-				$det2=abs($xyz[$i][$j]-0.5*($xyz[$i+4][$j-4]+$xyz[$i-4][$j+4]))-0.05*abs($xyz[$i+4][$j-4]-$xyz[$i-4][$j+4]);
-				$porr2=abs(abs(($xyz[$i+6][$j-6]-$xyz[$i-6][$j+6])/17)-abs(($xyz[$i+3][$j-3]-$xyz[$i-3][$j+3])/8.5));
-				if($porr2>$porr){$porr=$porr2;}
-				
-				if($det2>$det){$det=$det2;}
-				if($temp2<$temp){$temp=$temp2;}
-				if($temp > $high){$high=$temp;}	
+                $temp  = abs( $xyz[$i][ $j - 4 ] - $xyz[$i][$j] ) / 4;
+                $temp2 = abs( $xyz[$i][$j] - $xyz[$i][ $j - 4 ] ) / 4;
+                $det2 =
+                  abs( $xyz[$i][$j] -
+                      0.5 * ( $xyz[$i][ $j - 4 ] + $xyz[$i][ $j + 4 ] ) ) -
+                  0.05 * abs( $xyz[$i][ $j - 4 ] - $xyz[$i][ $j + 4 ] );
+                $porr2 = abs(
+                    abs( ( $xyz[$i][ $j - 6 ] - $xyz[$i][ $j + 6 ] ) / 12 ) -
+                      abs( ( $xyz[$i][ $j - 3 ] - $xyz[$i][ $j + 3 ] ) ) / 6 );
+                if ( $porr2 > $porr ) { $porr = $porr2; }
+                if ( $det2 > $det )   { $det  = $det2; }
+                if ( $temp2 < $temp ) { $temp = $temp2; }
+                if ( $temp > $high )  { $high = $temp; }
 
-				$steepness[$i][$j]= 12*($high)/(1+8*$det);
-				
-				#print " $porr ";
-				if($porr > 0.25*(0.67)/(0.3+$formlinesteepness)){$steepness[$i][$j]=0.01;}
-				if($high> $steepness[$i][$j]){$steepness[$i][$j]=$high;}
+                $temp  = abs( $xyz[ $i - 4 ][ $j - 4 ] - $xyz[$i][$j] ) / 5.6;
+                $temp2 = abs( $xyz[$i][$j] - $xyz[ $i + 4 ][ $j + 4 ] ) / 5.6;
+                $det2 =
+                  abs( $xyz[$i][$j] - 0.5 *
+                      ( $xyz[ $i - 4 ][ $j - 4 ] + $xyz[ $i + 4 ][ $j + 4 ] ) )
+                  - 0.05 *
+                  abs( $xyz[ $i - 4 ][ $j - 4 ] - $xyz[ $i + 4 ][ $j + 4 ] );
+                $porr2 = abs(
+                    abs(
+                        ( $xyz[ $i - 6 ][ $j - 6 ] - $xyz[ $i + 6 ][ $j + 6 ] )
+                        / 17
+                    ) - abs(
+                        ( $xyz[ $i - 3 ][ $j - 3 ] - $xyz[ $i + 3 ][ $j + 3 ] )
+                        / 8.5
+                    )
+                );
+                if ( $porr2 > $porr ) { $porr = $porr2; }
 
-				#if($high*.3 >$steepness[$i][$j]){$steepness[$i][$j]=$high*.3;}
+                if ( $det2 > $det )   { $det  = $det2; }
+                if ( $temp2 < $temp ) { $temp = $temp2; }
+                if ( $temp > $high )  { $high = $temp; }
 
-				}
+                $temp  = abs( $xyz[ $i - 4 ][ $j + 4 ] - $xyz[$i][$j] ) / 5.6;
+                $temp2 = abs( $xyz[$i][$j] - $xyz[ $i + 4 ][ $j - 4 ] ) / 5.6;
+                $det2 =
+                  abs( $xyz[$i][$j] - 0.5 *
+                      ( $xyz[ $i + 4 ][ $j - 4 ] + $xyz[ $i - 4 ][ $j + 4 ] ) )
+                  - 0.05 *
+                  abs( $xyz[ $i + 4 ][ $j - 4 ] - $xyz[ $i - 4 ][ $j + 4 ] );
+                $porr2 = abs(
+                    abs(
+                        ( $xyz[ $i + 6 ][ $j - 6 ] - $xyz[ $i - 6 ][ $j + 6 ] )
+                        / 17
+                    ) - abs(
+                        ( $xyz[ $i + 3 ][ $j - 3 ] - $xyz[ $i - 3 ][ $j + 3 ] )
+                        / 8.5
+                    )
+                );
+                if ( $porr2 > $porr ) { $porr = $porr2; }
 
-          }			
-		if(1==0){
-        for ( $i = 6 ; $i < $sxmax - 7 ; $i++ ) {
-            for ( $j = 6 ; $j < $symax - 7 ; $j++ ) {
-                $low  = 999999999;
-                $high = -999999999;
-                for ( $ii = $i - 6 ; $ii < $i + 7 ; $ii=$ii+3 ) {
-                    for ( $jj = $j - 6 ; $jj < $j + 7 ; $jj=$jj+3 ) {
-                        if ( abs( $jj - $j ) + abs( $ii - $i ) < 11 ) {
-                            if ( $xyz[$ii][$jj] < $low ) {
-                                $low = $xyz[$ii][$jj];
-                            }
-                            if ( $xyz[$ii][$jj] > $high ) {
-                                $high = $xyz[$ii][$jj];
-                            }
-                        }
-                    }
+                if ( $det2 > $det )   { $det  = $det2; }
+                if ( $temp2 < $temp ) { $temp = $temp2; }
+                if ( $temp > $high )  { $high = $temp; }
+
+                $steepness[$i][$j] = 12 * ($high) / ( 1 + 8 * $det );
+
+                #print " $porr ";
+                if ( $porr > 0.25 * (0.67) / ( 0.3 + $formlinesteepness ) ) {
+                    $steepness[$i][$j] = 0.01;
                 }
-                $steepness[$i][$j] = ( $high - $low ) / 12;
-
-                $low  = 999999999;
-                $high = -999999999;
-                for ( $ii = $i - 3 ; $ii < $i + 4 ; $ii++ ) {
-                    for ( $jj = $j - 3 ; $jj < $j + 4 ; $jj++ ) {
-                        if ( abs( $jj - $j ) + abs( $ii - $i ) < 6 ) {
-                            if ( $xyz[$ii][$jj] < $low ) {
-                                $low = $xyz[$ii][$jj];
-                            }
-                            if ( $xyz[$ii][$jj] > $high ) {
-                                $high = $xyz[$ii][$jj];
-                            }
-
-                        }
-                    }
-                }
-                if ( ( $high - $low ) / 6 < $steepness[$i][$j] ) {
-                    $steepness[$i][$j] = ( $high - $low ) / 6;
-                }
-                $low  = 999999999;
-                $high = -999999999;
-                for ( $ii = $i - 1 ; $ii < $i + 2 ; $ii++ ) {
-                    for ( $jj = $j - 1 ; $jj < $j + 2 ; $jj++ ) {
-                        if ( $xyz[$ii][$jj] < $low ) { $low = $xyz[$ii][$jj]; }
-                        if ( $xyz[$ii][$jj] > $high ) {
-                            $high = $xyz[$ii][$jj];
-                        }
-
-                    }
+                if ( $high > $steepness[$i][$j] ) {
+                    $steepness[$i][$j] = $high;
                 }
 
-                if ( ( $high - $low ) / 2 < $steepness[$i][$j] ) {
-                    $steepness[$i][$j] = ( $high - $low ) / 2;
-                }
+                #if($high*.3 >$steepness[$i][$j]){$steepness[$i][$j]=$high*.3;}
 
-                $steepness[$i][$j] =
-                  1 * $steepness[$i][$j] -
-                  0.2 * abs( $steepness[$i][$j] - ( $high - $low ) / 2 );
             }
+
         }
+        if ( 1 == 0 ) {
+            for ( $i = 6 ; $i < $sxmax - 7 ; $i++ ) {
+                for ( $j = 6 ; $j < $symax - 7 ; $j++ ) {
+                    $low  = 999999999;
+                    $high = -999999999;
+                    for ( $ii = $i - 6 ; $ii < $i + 7 ; $ii = $ii + 3 ) {
+                        for ( $jj = $j - 6 ; $jj < $j + 7 ; $jj = $jj + 3 ) {
+                            if ( abs( $jj - $j ) + abs( $ii - $i ) < 11 ) {
+                                if ( $xyz[$ii][$jj] < $low ) {
+                                    $low = $xyz[$ii][$jj];
+                                }
+                                if ( $xyz[$ii][$jj] > $high ) {
+                                    $high = $xyz[$ii][$jj];
+                                }
+                            }
+                        }
+                    }
+                    $steepness[$i][$j] = ( $high - $low ) / 12;
+
+                    $low  = 999999999;
+                    $high = -999999999;
+                    for ( $ii = $i - 3 ; $ii < $i + 4 ; $ii++ ) {
+                        for ( $jj = $j - 3 ; $jj < $j + 4 ; $jj++ ) {
+                            if ( abs( $jj - $j ) + abs( $ii - $i ) < 6 ) {
+                                if ( $xyz[$ii][$jj] < $low ) {
+                                    $low = $xyz[$ii][$jj];
+                                }
+                                if ( $xyz[$ii][$jj] > $high ) {
+                                    $high = $xyz[$ii][$jj];
+                                }
+
+                            }
+                        }
+                    }
+                    if ( ( $high - $low ) / 6 < $steepness[$i][$j] ) {
+                        $steepness[$i][$j] = ( $high - $low ) / 6;
+                    }
+                    $low  = 999999999;
+                    $high = -999999999;
+                    for ( $ii = $i - 1 ; $ii < $i + 2 ; $ii++ ) {
+                        for ( $jj = $j - 1 ; $jj < $j + 2 ; $jj++ ) {
+                            if ( $xyz[$ii][$jj] < $low ) {
+                                $low = $xyz[$ii][$jj];
+                            }
+                            if ( $xyz[$ii][$jj] > $high ) {
+                                $high = $xyz[$ii][$jj];
+                            }
+
+                        }
+                    }
+
+                    if ( ( $high - $low ) / 2 < $steepness[$i][$j] ) {
+                        $steepness[$i][$j] = ( $high - $low ) / 2;
+                    }
+
+                    $steepness[$i][$j] =
+                      1 * $steepness[$i][$j] -
+                      0.2 * abs( $steepness[$i][$j] - ( $high - $low ) / 2 );
+                }
+            }
         }
         print ".";
     }
@@ -8249,9 +8470,9 @@ if ( $command eq 'render' ) {
     $y0      = 1 * $tfw[5];
     $resvege = 1 * $tfw[0];
 
-    $img = newFromPng GD::Image( $tempfolder . 'vegetation.png' );
+    $img   = newFromPng GD::Image( $tempfolder . 'vegetation.png' );
     $imgug = newFromPng GD::Image( $tempfolder . 'undergrowth.png' );
-	
+
     ( $w, $h ) = $img->getBounds();
 
     # offset for northlines
@@ -8261,7 +8482,8 @@ if ( $command eq 'render' ) {
       ( 250 / cos($angle) );
     $eastoff = -$eastoff / 254 * 600;
 
-    $img2 = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+    $img2 = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
 
     $white  = $img2->colorAllocate( 255, 255, 255 );
     $brown  = $img2->colorAllocate( 166, 85,  43 );
@@ -8271,41 +8493,49 @@ if ( $command eq 'render' ) {
 
     $img2->copyResized(
         $img, 0, 0, 0, 0,
-        $w * 600 / 254/$scalefactor,
-        $h * 600 / 254/$scalefactor,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor,
         $w, $h
     );
 
-    $img2->copy( $imgug, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor );
+    $img2->copy(
+        $imgug, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
 
-	
     if ( -e $tempfolder . 'low.png' ) {
-        $low = newFromPng GD::Image( $tempfolder . 'low.png' );
+        $low    = newFromPng GD::Image( $tempfolder . 'low.png' );
         $transp = $low->colorClosest( 255, 255, 255 );
         $low->transparent($transp);
-        $img2->copy( $low, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+        $img2->copy(
+            $low, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
     }
 
 ## north lines
 
     if ( $angle != 999 ) {
         for (
-            $i = $eastoff - 600 * 250 / 254 / cos($angle) * 100 /$scalefactor;
-            $i < 5 * $w * 600 / 254 /$scalefactor;
-            $i = $i + 600 * 250 / 254 / cos($angle)/$scalefactor
+            $i =
+              $eastoff - 600 * 250 / 254 / cos($angle) * 100 / $scalefactor ;
+            $i < 5 * $w * 600 / 254 / $scalefactor ;
+            $i = $i + 600 * 250 / 254 / cos($angle) / $scalefactor
           )
         {
             for ( $m = 0 ; $m < $nwidth ; $m++ ) {
                 $img2->line(
                     ( $i + $m ),
                     (0),
-                    ( $i + tan($angle) * $h * 600 / 254 /$scalefactor+ $m ),
-                    ( $h * 600 / 254 /$scalefactor), $blue
+                    ( $i + tan($angle) * $h * 600 / 254 / $scalefactor + $m ),
+                    ( $h * 600 / 254 / $scalefactor ),
+                    $blue
                 );
             }
         }
     }
-
 
     open( SISAAN, "<" . $tempfolder . "out2.dxf" );
     @d = <SISAAN>;
@@ -8314,12 +8544,11 @@ if ( $command eq 'render' ) {
     $d = join( '', @d );
 
     @d = split( /POLYLINE/, $d );
-	
-		if($formline==2 && $nodepressions != 1){
-	open(FORMLINE,">" . $tempfolder . "formlines.dxf" );
-	print FORMLINE $d[0];
-	}
-	
+
+    if ( $formline == 2 && $nodepressions != 1 ) {
+        open( FORMLINE, ">" . $tempfolder . "formlines.dxf" );
+        print FORMLINE $d[0];
+    }
 
     $j = 0;
     foreach $rec (@d) {
@@ -8358,8 +8587,12 @@ if ( $command eq 'render' ) {
                 if ( $i > 1 ) {
                     @val = split( /\n/, $v );
 
-                    $temp1 .= ( ( 1 * $val[$xline] - $x0 ) * 600 / 254 /$scalefactor) . '|';
-                    $temp2 .= ( ( $y0 - 1 * $val[$yline] ) * 600 / 254 /$scalefactor) . '|';
+                    $temp1 .=
+                      ( ( 1 * $val[$xline] - $x0 ) * 600 / 254 / $scalefactor )
+                      . '|';
+                    $temp2 .=
+                      ( ( $y0 - 1 * $val[$yline] ) * 600 / 254 / $scalefactor )
+                      . '|';
 
                 }
             }
@@ -8369,8 +8602,8 @@ if ( $command eq 'render' ) {
         #print "#".$temp;
         chop($temp1);
         chop($temp2);
-        @x = split( /\|/, $temp1 );
-        @y = split( /\|/, $temp2 );
+        @x   = split( /\|/, $temp1 );
+        @y   = split( /\|/, $temp2 );
         $col = $purple;
         if ( $layer =~ /contour/ ) { $col = $brown; }
         if ( $nodepressions != 1 || $layer =~ /contour/ ) {
@@ -8401,33 +8634,63 @@ if ( $command eq 'render' ) {
                            $curvew != 1.5
                         || $formline == 0
                         || $steepness[
-                        floor( ( ( $x[$i] / 600 * 254 *$scalefactor + $x0 ) - $xstart ) / $size )
+                        floor(
+                            (
+                                ( $x[$i] / 600 * 254 * $scalefactor + $x0 ) -
+                                  $xstart
+                            ) / $size
+                        )
                         ][
                         floor(
-                              ( ( -$y[$i] / 600 * 254 *$scalefactor+ $y0 ) - $ystart ) / $size
+                            (
+                                ( -$y[$i] / 600 * 254 * $scalefactor + $y0 ) -
+                                  $ystart
+                            ) / $size
                         )
                         ] < $formlinesteepness
                         || $steepness[
-                        floor( ( ( $x[$i] / 600 * 254 *$scalefactor+ $x0 ) - $xstart ) / $size )
+                        floor(
+                            (
+                                ( $x[$i] / 600 * 254 * $scalefactor + $x0 ) -
+                                  $xstart
+                            ) / $size
+                        )
                         ][
                         floor(
-                              ( ( -$y[$i] / 600 * 254 *$scalefactor+ $y0 ) - $ystart ) / $size
+                            (
+                                ( -$y[$i] / 600 * 254 * $scalefactor + $y0 ) -
+                                  $ystart
+                            ) / $size
                         ) + 1
                         ] < $formlinesteepness
                         || $steepness[
-                        floor( ( ( $x[$i] / 600 * 254 *$scalefactor+ $x0 ) - $xstart ) / $size )
-                        + 1
+                        floor(
+                            (
+                                ( $x[$i] / 600 * 254 * $scalefactor + $x0 ) -
+                                  $xstart
+                            ) / $size
+                        ) + 1
                         ][
                         floor(
-                              ( ( -$y[$i] / 600 * 254 *$scalefactor+ $y0 ) - $ystart ) / $size
+                            (
+                                ( -$y[$i] / 600 * 254 * $scalefactor + $y0 ) -
+                                  $ystart
+                            ) / $size
                         )
                         ] < $formlinesteepness
                         || $steepness[
-                        floor( ( ( $x[$i] / 600 * 254 *$scalefactor+ $x0 ) - $xstart ) / $size )
-                        + 1
+                        floor(
+                            (
+                                ( $x[$i] / 600 * 254 * $scalefactor + $x0 ) -
+                                  $xstart
+                            ) / $size
+                        ) + 1
                         ][
                         floor(
-                              ( ( -$y[$i] / 600 * 254 *$scalefactor+ $y0 ) - $ystart ) / $size
+                            (
+                                ( -$y[$i] / 600 * 254 * $scalefactor + $y0 ) -
+                                  $ystart
+                            ) / $size
                         ) + 1
                         ] < $formlinesteepness
                       )
@@ -8450,96 +8713,118 @@ if ( $command eq 'render' ) {
                     $help2[$i] = $help2[ $#x - 6 ];
                 }
 
-            $on = 0;
-            for ( $i = 0 ; $i < $#x + 1 ; $i++ ) {
-                if ( $help2[$i] == 1 ) { $on = $formlineaddition; }
-                if ( $on > 0 ) { $help2[$i] = 1; $on = $on - 1; }
-            }
-			if (  $x[0] == $x[$#x] && $y[0] == $y[$#y] && $on > 0 ) {
-			            for ( $i = 0 ; $i < $#x + 1 && $on >0 ; $i++ ) {
-							$help2[$i] = 1; $on = $on - 1; 
-			}
-			}
-            $on = 0;
-            for ( $i = $#x ; $i > -1 ; $i = $i - 1 ) {
-                if ( $help2[$i] == 1 ) { $on = $formlineaddition; }
-                if ( $on > 0 ) { $help2[$i] = 1; $on = $on - 1; }
-            }
-			if (  $x[0] == $x[$#x] && $y[0] == $y[$#y] && $on > 0 ) {
-			           for ( $i = $#x ; $i > -1 && $on > 0; $i = $i - 1 ) {
-							$help2[$i] = 1; $on = $on - 1; 
-			}
-			}
-			
-			## lets not break small form line rigs			
-$smallringtest=0;
- if ( $x[0] == $x[$#x] && $y[0] == $y[$#y] && $#x < 121) {
- for ( $i = 1 ; $i < $#x + 1 ; $i++ ) {
- if($help2[$i] ==1){
-  $smallringtest=1;
- }
- }
- }
- 
- ## lets draw short gaps together
-if($smallringtest ==0){
-  $testeri=1;
- for ( $i = 1 ; $i < $#x + 1 ; $i++ ) {
+                $on = 0;
+                for ( $i = 0 ; $i < $#x + 1 ; $i++ ) {
+                    if ( $help2[$i] == 1 ) { $on = $formlineaddition; }
+                    if ( $on > 0 ) { $help2[$i] = 1; $on = $on - 1; }
+                }
+                if ( $x[0] == $x[$#x] && $y[0] == $y[$#y] && $on > 0 ) {
+                    for ( $i = 0 ; $i < $#x + 1 && $on > 0 ; $i++ ) {
+                        $help2[$i] = 1;
+                        $on = $on - 1;
+                    }
+                }
+                $on = 0;
+                for ( $i = $#x ; $i > -1 ; $i = $i - 1 ) {
+                    if ( $help2[$i] == 1 ) { $on = $formlineaddition; }
+                    if ( $on > 0 ) { $help2[$i] = 1; $on = $on - 1; }
+                }
+                if ( $x[0] == $x[$#x] && $y[0] == $y[$#y] && $on > 0 ) {
+                    for ( $i = $#x ; $i > -1 && $on > 0 ; $i = $i - 1 ) {
+                        $help2[$i] = 1;
+                        $on = $on - 1;
+                    }
+                }
 
- if($help2[$i] ==1){
- if ($testeri<$i && $i-$testeri < $minimumgap){
+                ## lets not break small form line rigs
+                $smallringtest = 0;
+                if ( $x[0] == $x[$#x] && $y[0] == $y[$#y] && $#x < 121 ) {
+                    for ( $i = 1 ; $i < $#x + 1 ; $i++ ) {
+                        if ( $help2[$i] == 1 ) {
+                            $smallringtest = 1;
+                        }
+                    }
+                }
 
-  for ( $j = $testeri ; $j < $i + 1 ; $j++ ) {
-  $help2[$j]=1;
- }
- }
-   $testeri=$i;
- }
- }
- # ring  handling
-  if ( $x[0] == $x[$#x] && $y[0] == $y[$#y] && $#x>1) {
-  for ( $i = 1 ; $i < $#x + 1 && $help2[$i]!=1; $i++ ) { };
-  for ( $j = $#x; $j >1  && $help2[$j]!=1; $j=$j-1 ) { };
-  if($#x-$j +$i < $minimumgap && $j>$i){
-    for ( $k = 0 ; $k < $i + 1 ; $k++ ) {  $help2[$k]=1; }
-    for ( $k = $j ; $k < $#x + 1 ; $k++ ) {  $help2[$k]=1; }  
-  }
-  
-  }
-  } 
-   } # formlines only
-            #			if($curvew == 1.5 && $formline==2){
-            #&dashedcontourstyle;
-            # $img2->setThickness(5);
-            # }
+                ## lets draw short gaps together
+                if ( $smallringtest == 0 ) {
+                    $testeri = 1;
+                    for ( $i = 1 ; $i < $#x + 1 ; $i++ ) {
+
+                        if ( $help2[$i] == 1 ) {
+                            if ( $testeri < $i && $i - $testeri < $minimumgap )
+                            {
+
+                                for ( $j = $testeri ; $j < $i + 1 ; $j++ ) {
+                                    $help2[$j] = 1;
+                                }
+                            }
+                            $testeri = $i;
+                        }
+                    }
+
+                    # ring  handling
+                    if ( $x[0] == $x[$#x] && $y[0] == $y[$#y] && $#x > 1 ) {
+                        for ( $i = 1 ; $i < $#x + 1 && $help2[$i] != 1 ; $i++ )
+                        {
+                        }
+                        for (
+                            $j = $#x ;
+                            $j > 1 && $help2[$j] != 1 ;
+                            $j = $j - 1
+                          )
+                        {
+                        }
+                        if ( $#x - $j + $i < $minimumgap && $j > $i ) {
+                            for ( $k = 0 ; $k < $i + 1 ; $k++ ) {
+                                $help2[$k] = 1;
+                            }
+                            for ( $k = $j ; $k < $#x + 1 ; $k++ ) {
+                                $help2[$k] = 1;
+                            }
+                        }
+
+                    }
+                }
+            }    # formlines only
+                 #			if($curvew == 1.5 && $formline==2){
+                 #&dashedcontourstyle;
+                 # $img2->setThickness(5);
+                 # }
             $linedist   = 0;
             $onegapdone = 0;
             $gap        = 0;
-			
 
-
-$formlinestart=0; 
+            $formlinestart = 0;
             for ( $i = 1 ; $i < $#x + 1 ; $i++ ) {
-                if ( $curvew != 1.5 || $formline == 0 || $help2[$i] == 1 || $smallringtest==1) {
-if($formline == 2 && $nodepressions != 1  &&  $curvew == 1.5){
-if($formlinestart==0){
-print FORMLINE "POLYLINE
+                if (   $curvew != 1.5
+                    || $formline == 0
+                    || $help2[$i] == 1
+                    || $smallringtest == 1 )
+                {
+                    if (   $formline == 2
+                        && $nodepressions != 1
+                        && $curvew == 1.5 )
+                    {
+                        if ( $formlinestart == 0 ) {
+                            print FORMLINE "POLYLINE
  66
 1
   8
 formline
   0\n";
-$formlinestart=1; 
- }
-print FORMLINE "VERTEX
+                            $formlinestart = 1;
+                        }
+                        print FORMLINE "VERTEX
   8
 formline
  10
-".( $x[$i]/ 600 * 254 *$scalefactor+ $x0)."
+" . ( $x[$i] / 600 * 254 * $scalefactor + $x0 ) . "
  20
-".( -$y[$i]/ 600 * 254 *$scalefactor+ $y0)."
+" . ( -$y[$i] / 600 * 254 * $scalefactor + $y0 ) . "
   0\n";
-  }
+                    }
+
                     #print " ($x[$i]  $y[$i] ) ";
                     if ( $curvew == 1.5 && $formline == 2 ) {
                         $step =
@@ -8635,8 +8920,11 @@ formline
 
                         }
                         else {
-                            for ( $n = -$curvew - .5 ;
-                                $n < $curvew + .5 ; $n++ )
+                            for (
+                                $n = -$curvew - .5 ;
+                                $n < $curvew + .5 ;
+                                $n++
+                              )
                             {
                                 for (
                                     $m = -$curvew - .5 ;
@@ -8679,31 +8967,35 @@ formline
                         }
 
                     }
-                }else{
-				if($formline==2 && $formlinestart==1 && $nodepressions != 1){
-				print FORMLINE "SEQEND
+                }
+                else {
+                    if (   $formline == 2
+                        && $formlinestart == 1
+                        && $nodepressions != 1 )
+                    {
+                        print FORMLINE "SEQEND
   0\n";
-  $formlinestart=0;
-  }
-				}
+                        $formlinestart = 0;
+                    }
+                }
             }
-			
-			
-				if($formline==2 && $formlinestart==1 && $nodepressions != 1){
-				print FORMLINE "SEQEND
+
+            if ( $formline == 2 && $formlinestart == 1 && $nodepressions != 1 )
+            {
+                print FORMLINE "SEQEND
   0\n";
-  $formlinestart=0;
-  }
-  
+                $formlinestart = 0;
+            }
+
             $img2->setThickness(1);
         }
     }
 ####
-if($formline==2 && $nodepressions != 1){
-print FORMLINE "ENDSEC
+    if ( $formline == 2 && $nodepressions != 1 ) {
+        print FORMLINE "ENDSEC
   0
 EOF";
-}
+    }
 ##################
 
     open( SISAAN, "<" . $tempfolder . "dotknolls.dxf" );
@@ -8730,10 +9022,12 @@ EOF";
             foreach $v (@val) {
                 chomp($v);
                 if ( $v eq ' 10' ) {
-                    $x = ( ( 1 * $val[ $i + 1 ] - $x0 ) * 600 / 254 /$scalefactor);
+                    $x = ( ( 1 * $val[ $i + 1 ] - $x0 ) * 600 / 254 /
+                          $scalefactor );
                 }
                 if ( $v eq ' 20' ) {
-                    $y = ( ( $y0 - 1 * $val[ $i + 1 ] ) * 600 / 254 /$scalefactor );
+                    $y = ( ( $y0 - 1 * $val[ $i + 1 ] ) * 600 / 254 /
+                          $scalefactor );
                 }
                 $i++;
             }
@@ -8753,8 +9047,9 @@ EOF";
     if ( -e $tempfolder . 'blocks.png' ) {
 
         #$blocks = new GD::Image( $w * 600 / 254, $h * 600 / 254 );
-        $blocks = newFromPng GD::Image( $tempfolder . 'blocks.png' );
-        $blockpurple = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $blocks      = newFromPng GD::Image( $tempfolder . 'blocks.png' );
+        $blockpurple = new GD::Image( $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor );
 
 # $bpurple  = $blockpurple->colorAllocate( 0, 0, 120 );
 #      $blockpurple->filledRectangle( 0,0, $w * 600 / 254+1, $h * 600 / 254+1, bpurple );
@@ -8762,8 +9057,8 @@ EOF";
 #       $blocks->transparent($transp);
         $blockpurple->copyResized(
             $blocks, 0, 0, 0, 0,
-            $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor,
             $w, $h
         );
 
@@ -8771,74 +9066,116 @@ EOF";
         $blockpurple->transparent($transp);
         $img2->copy(
             $blockpurple, -2, -2, 0, 0,
-            $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
         );
-        $img2->copy( $blockpurple, -2, 0, 0, 0, $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor );
-        $img2->copy( $blockpurple, -2, 2, 0, 0, $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor );
-        $img2->copy( $blockpurple, 0, -2, 0, 0, $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor );
-        $img2->copy( $blockpurple, 0, 0, 0, 0, $w * 600 / 254, $h * 600 / 254/$scalefactor );
-        $img2->copy( $blockpurple, 0, 2, 0, 0, $w * 600 / 254, $h * 600 / 254/$scalefactor );
-        $img2->copy( $blockpurple, 2, -2, 0, 0, $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor );
-        $img2->copy( $blockpurple, 2, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-        $img2->copy( $blockpurple, 2, 2, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $img2->copy(
+            $blockpurple, -2, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
+        $img2->copy(
+            $blockpurple, -2, 2, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
+        $img2->copy(
+            $blockpurple, 0, -2, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
+        $img2->copy(
+            $blockpurple, 0, 0, 0, 0,
+            $w * 600 / 254,
+            $h * 600 / 254 / $scalefactor
+        );
+        $img2->copy(
+            $blockpurple, 0, 2, 0, 0,
+            $w * 600 / 254,
+            $h * 600 / 254 / $scalefactor
+        );
+        $img2->copy(
+            $blockpurple, 2, -2, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
+        $img2->copy(
+            $blockpurple, 2, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
+        $img2->copy(
+            $blockpurple, 2, 2, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
 
-        $blockpurple = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $blockpurple = new GD::Image( $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor );
 
         $bpurple = $blockpurple->colorAllocate( 255, 110, 255 );
         $blockpurple->filledRectangle(
             0, 0,
-            $w * 600 / 254/$scalefactor + 1,
-            $h * 600 / 254/$scalefactor + 1, bpurple
+            $w * 600 / 254 / $scalefactor + 1,
+            $h * 600 / 254 / $scalefactor + 1, bpurple
         );
         $transp = $blocks->colorClosest( 0, 0, 0 );
         $blocks->transparent($transp);
         $blockpurple->copyResized(
             $blocks, 0, 0, 0, 0,
-            $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor,
             $w, $h
         );
 
         $transp = $blockpurple->colorClosest( 255, 255, 255 );
         $blockpurple->transparent($transp);
-        $img2->copy( $blockpurple, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+        $img2->copy(
+            $blockpurple, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
         undef $blocks;
         undef $blockpurple;
     }
 
     if ( -e $tempfolder . 'blueblack.png' ) {
 
-        $blueb = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $blueb = new GD::Image( $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor );
 
         $bbwhite = $blueb->colorAllocate( 255, 255, 255 );
         $bbblue  = $blueb->colorAllocate( 0,   0,   200 );
-        $imgbb = newFromPng GD::Image( $tempfolder . 'blueblack.png' );
-		
+        $imgbb   = newFromPng GD::Image( $tempfolder . 'blueblack.png' );
+
         $blueb->copyResized(
             $imgbb, 0, 0, 0, 0,
-            $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor,
             $w, $h
         );
 
         if ( $angle != 999 ) {
             for (
-                $i = $eastoff - 600 * 250 / 254/$scalefactor / cos($angle) * 100 ;
-                $i < 5 * $w * 600 / 254/$scalefactor ;
-                $i = $i + 600 * 250 / 254/$scalefactor / cos($angle)
+                $i =
+                  $eastoff -
+                  600 * 250 / 254 / $scalefactor / cos($angle) * 100 ;
+                $i < 5 * $w * 600 / 254 / $scalefactor ;
+                $i = $i +
+                  600 * 250 / 254 / $scalefactor / cos($angle)
               )
             {
                 for ( $m = 0 ; $m < $nwidth ; $m++ ) {
                     $blueb->line(
                         ( $i + $m ),
                         (0),
-                        ( $i + tan($angle) * $h * 600 / 254/$scalefactor + $m ),
-                        ( $h * 600 / 254/$scalefactor ), $bbblue
+                        (
+                            $i +
+                              tan($angle) * $h * 600 / 254 / $scalefactor +
+                              $m
+                        ),
+                        ( $h * 600 / 254 / $scalefactor ),
+                        $bbblue
                     );
                 }
             }
@@ -8848,13 +9185,17 @@ EOF";
         $imgbb->transparent($transp);
         $blueb->copyResized(
             $imgbb, 0, 0, 0, 0,
-            $w * 600 / 254/$scalefactor,
-            $h * 600 / 254/$scalefactor,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor,
             $w, $h
         );
         $transp = $blueb->colorClosest( 255, 255, 255 );
         $blueb->transparent($transp);
-        $img2->copy( $blueb, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+        $img2->copy(
+            $blueb, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
     }
 
     ################
@@ -8863,19 +9204,20 @@ EOF";
 
 ##################
 
-$cliffdebug = $Config->{_}->{cliffdebug};
+    $cliffdebug = $Config->{_}->{cliffdebug};
 
-if($cliffdebug ==1){
-    $cliffcolor{'cliff2'} = $img2->colorAllocate( 100, 0,   100 );
-    $cliffcolor{'cliff3'} = $img2->colorAllocate( 0, 100,   100 );
-	$cliffcolor{'cliff4'} = $img2->colorAllocate( 100, 100,   0 );
+    if ( $cliffdebug == 1 ) {
+        $cliffcolor{'cliff2'} = $img2->colorAllocate( 100, 0,   100 );
+        $cliffcolor{'cliff3'} = $img2->colorAllocate( 0,   100, 100 );
+        $cliffcolor{'cliff4'} = $img2->colorAllocate( 100, 100, 0 );
 
-}else{
+    }
+    else {
 
-$cliffcolor{'cliff2'}=$black;
-$cliffcolor{'cliff3'}=$black;
-$cliffcolor{'cliff4'}=$black;
-}
+        $cliffcolor{'cliff2'} = $black;
+        $cliffcolor{'cliff3'} = $black;
+        $cliffcolor{'cliff4'} = $black;
+    }
 
     open( SISAAN, "<" . $tempfolder . "c2g.dxf" );
     $j = 0;
@@ -8915,8 +9257,12 @@ $cliffcolor{'cliff4'}=$black;
                 if ( $i > 1 ) {
                     @val = split( /\n/, $v );
 
-                    $temp1 .= ( ( 1 * $val[$xline] - $x0 ) * 600 / 254/$scalefactor ) . '|';
-                    $temp2 .= ( ( $y0 - 1 * $val[$yline] ) * 600 / 254/$scalefactor ) . '|';
+                    $temp1 .=
+                      ( ( 1 * $val[$xline] - $x0 ) * 600 / 254 / $scalefactor )
+                      . '|';
+                    $temp2 .=
+                      ( ( $y0 - 1 * $val[$yline] ) * 600 / 254 / $scalefactor )
+                      . '|';
 
                 }
             }
@@ -8942,8 +9288,10 @@ $cliffcolor{'cliff4'}=$black;
                 $x[$#y] = $x[$#y] - $dx / $dist * 1.5;
                 $y[$#y] = $y[$#y] - $dy / $dist * 1.5;
 
-                $img2->filledArc( $x[0],   $y[0],   8, 8, 0, 360, $cliffcolor{$layer} );
-                $img2->filledArc( $x[$#x], $y[$#y], 8, 8, 0, 360, $cliffcolor{$layer} );
+                $img2->filledArc( $x[0], $y[0], 8, 8, 0, 360,
+                    $cliffcolor{$layer} );
+                $img2->filledArc( $x[$#x], $y[$#y], 8, 8, 0, 360,
+                    $cliffcolor{$layer} );
             }
         }
 
@@ -8956,7 +9304,8 @@ $cliffcolor{'cliff4'}=$black;
                         ( $x[ $i - 1 ] + $n ),
                         ( $y[ $i - 1 ] + $m ),
                         ( $x[$i] + $n ),
-                        ( $y[$i] + $m ), $cliffcolor{$layer}
+                        ( $y[$i] + $m ),
+                        $cliffcolor{$layer}
                     );
                 }
             }
@@ -9005,8 +9354,12 @@ $cliffcolor{'cliff4'}=$black;
                 if ( $i > 1 ) {
                     @val = split( /\n/, $v );
 
-                    $temp1 .= ( ( 1 * $val[$xline] - $x0 ) * 600 / 254/$scalefactor ) . '|';
-                    $temp2 .= ( ( $y0 - 1 * $val[$yline] ) * 600 / 254/$scalefactor ) . '|';
+                    $temp1 .=
+                      ( ( 1 * $val[$xline] - $x0 ) * 600 / 254 / $scalefactor )
+                      . '|';
+                    $temp2 .=
+                      ( ( $y0 - 1 * $val[$yline] ) * 600 / 254 / $scalefactor )
+                      . '|';
 
                 }
             }
@@ -9032,8 +9385,10 @@ $cliffcolor{'cliff4'}=$black;
                 $x[$#y] = $x[$#y] - $dx / $dist * 1.5;
                 $y[$#y] = $y[$#y] - $dy / $dist * 1.5;
 
-                $img2->filledArc( $x[0],   $y[0],   8, 8, 0, 360, $cliffcolor{$layer} );
-                $img2->filledArc( $x[$#x], $y[$#y], 8, 8, 0, 360, $cliffcolor{$layer} );
+                $img2->filledArc( $x[0], $y[0], 8, 8, 0, 360,
+                    $cliffcolor{$layer} );
+                $img2->filledArc( $x[$#x], $y[$#y], 8, 8, 0, 360,
+                    $cliffcolor{$layer} );
             }
         }
         for ( $i = 1 ; $i < $#x + 1 ; $i++ ) {
@@ -9045,7 +9400,8 @@ $cliffcolor{'cliff4'}=$black;
                         ( $x[ $i - 1 ] + $n ),
                         ( $y[ $i - 1 ] + $m ),
                         ( $x[$i] + $n ),
-                        ( $y[$i] + $m ), $cliffcolor{$layer}
+                        ( $y[$i] + $m ),
+                        $cliffcolor{$layer}
                     );
                 }
             }
@@ -9062,14 +9418,19 @@ $cliffcolor{'cliff4'}=$black;
     @tfw = <SISAAN>;
     close SISAAN;
 
-    $tfw[0] = '' . ( $tfw[0] / 600 * 254*$scalefactor ) . "\n";
-    $tfw[3] = '' . ( $tfw[3] / 600 * 254*$scalefactor ) . "\n";
+    $tfw[0] = '' . ( $tfw[0] / 600 * 254 * $scalefactor ) . "\n";
+    $tfw[3] = '' . ( $tfw[3] / 600 * 254 * $scalefactor ) . "\n";
 
     if ( -e $tempfolder . 'high.png' ) {
 
-        $imgtemp = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $imgtemp = new GD::Image( $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor );
         $high = newFromPng GD::Image( $tempfolder . 'high.png' );
-        $imgtemp->copy( $high, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $imgtemp->copy(
+            $high, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
 
         $northblue = $high->colorAllocate( 0, 0, 200 );
 
@@ -9077,17 +9438,25 @@ $cliffcolor{'cliff4'}=$black;
 
         if ( $angle != 999 ) {
             for (
-                $i = $eastoff - 600 * 250 / 254 /$scalefactor/ cos($angle) * 100 ;
-                $i < 5 * $w * 600 / 254/$scalefactor ;
-                $i = $i + 600 * 250 / 254/$scalefactor / cos($angle)
+                $i =
+                  $eastoff -
+                  600 * 250 / 254 / $scalefactor / cos($angle) * 100 ;
+                $i < 5 * $w * 600 / 254 / $scalefactor ;
+                $i = $i +
+                  600 * 250 / 254 / $scalefactor / cos($angle)
               )
             {
                 for ( $m = 0 ; $m < $nwidth ; $m++ ) {
                     $high->line(
                         ( $i + $m ),
                         (0),
-                        ( $i + tan($angle) * $h * 600 / 254/$scalefactor + $m ),
-                        ( $h * 600 / 254/$scalefactor ), $northblue
+                        (
+                            $i +
+                              tan($angle) * $h * 600 / 254 / $scalefactor +
+                              $m
+                        ),
+                        ( $h * 600 / 254 / $scalefactor ),
+                        $northblue
                     );
                 }
             }
@@ -9095,13 +9464,21 @@ $cliffcolor{'cliff4'}=$black;
 
         $transp = $imgtemp->colorClosest( 29, 190, 255 );
         $imgtemp->transparent($transp);
-        $high->copy( $imgtemp, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $high->copy(
+            $imgtemp, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
 
         $transp = $high->colorClosest( 255, 255, 255 );
 
         $high->transparent($transp);
 
-        $img2->copy( $high, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+        $img2->copy(
+            $high, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
     }
 
 ##################
@@ -9176,18 +9553,28 @@ if ( $command eq 'mtkshaperender' ) {
 
     ( $w, $h ) = $img->getBounds();
 
-    $img2 = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254 /$scalefactor);
+    $img2 = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
     $white = $img2->colorAllocate( 255, 255, 255 );
 
-    $imgbrown        = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgbrowntop     = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblack        = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblacktop     = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgyellow       = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblue         = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgmarsh        = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgtempblack    = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgtempblacktop = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+    $imgbrown = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgbrowntop = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgblack = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgblacktop = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgyellow = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgblue = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgmarsh = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgtempblack = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+    $imgtempblacktop = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
     $tempwhite = $imgtempblacktop->colorAllocate( 255, 255, 255 );
     $tempblack = $imgtempblacktop->colorAllocate( 0,   0,   0 );
     $tempwhite = $imgtempblack->colorAllocate( 255, 255, 255 );
@@ -9209,27 +9596,29 @@ if ( $command eq 'mtkshaperender' ) {
     $brown = $imgbrown->colorAllocate( 255, 150, 80 );
     $brown = $imgbrowntop->colorAllocate( 255, 150, 80 );
 
-	($buildingr,$buildingg,$buildingb)=split(/\,/,$buildingcolor);
-    $purple = $imgblack->colorAllocate(1*$buildingr,1*$buildingg,1*$buildingb);
-	
+    ( $buildingr, $buildingg, $buildingb ) = split( /\,/, $buildingcolor );
+    $purple = $imgblack->colorAllocate( 1 * $buildingr, 1 * $buildingg,
+        1 * $buildingb );
+
     $yellow = $imgyellow->colorAllocate( 255, 184, 83 );
     $browny = $imgyellow->colorAllocate( 255, 150, 80 );
-    $blue = $imgblue->colorAllocate( 29, 190, 255 );
-    $blue = $imgmarsh->colorAllocate( 29, 190, 255 );
-    $marsh = $imgblue->colorAllocate( 0, 10, 220 );
-    $marsh = $imgmarsh->colorAllocate( 0, 10, 220 );
+    $blue   = $imgblue->colorAllocate( 29, 190, 255 );
+    $blue   = $imgmarsh->colorAllocate( 29, 190, 255 );
+    $marsh  = $imgblue->colorAllocate( 0, 10, 220 );
+    $marsh  = $imgmarsh->colorAllocate( 0, 10, 220 );
 
-    $olive = $imgyellow->colorAllocate( 194, 176, 33 );
-    $imgblue2 = new GD::Image( $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-   
-    opendir(DIR,"temp$thread");
+    $olive    = $imgyellow->colorAllocate( 194, 176, 33 );
+    $imgblue2 = new GD::Image( $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor );
+
+    opendir( DIR, "temp$thread" );
     @d = grep { /.*?.shp$/i } readdir(DIR);
     closedir DIR;
 
     foreach $file (@d) {
         chomp($file);
-		$file="temp$thread/$file";
-        $delshp = $file;    # $delshp = "temp$thread/" . $file;
+        $file   = "temp$thread/$file";
+        $delshp = $file;                 # $delshp = "temp$thread/" . $file;
         $file =~ s/\.shp$//;
 
         # $file = "temp$thread/" . $file;
@@ -9262,17 +9651,33 @@ if ( $command eq 'mtkshaperender' ) {
     ## erase lake jumpline artifacts
 
     $white = $imgblue2->colorAllocate( 255, 255, 255 );
-    $imgblue2->copy( $imgblue, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+    $imgblue2->copy(
+        $imgblue, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
 
     $imgblue->transparent($blue);
-    $imgblue2->copy( $imgblue, 1, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblue2->copy( $imgblue, 0, 1, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblue->copy( $imgblue2, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+    $imgblue2->copy(
+        $imgblue, 1, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
+    $imgblue2->copy(
+        $imgblue, 0, 1, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
+    $imgblue->copy(
+        $imgblue2, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
     $imgblue->transparent(-1);
 
 ## marsh stripes
-    for ( $i = 0 ; $i < $h * 600 / 254/$scalefactor + 500 ; $i = $i + 14 ) {
-        $imgmarsh->filledRectangle( -1, $i, $w * 600 / 254/$scalefactor + 2,
+    for ( $i = 0 ; $i < $h * 600 / 254 / $scalefactor + 500 ; $i = $i + 14 ) {
+        $imgmarsh->filledRectangle( -1, $i, $w * 600 / 254 / $scalefactor + 2,
             $i + 10, $white );
     }
 
@@ -9287,37 +9692,68 @@ if ( $command eq 'mtkshaperender' ) {
     $imgtempblacktop->transparent($transp);
     $imgblacktop->copy(
         $imgtempblacktop, 0, 0, 0, 0,
-        $w * 600 / 254/$scalefactor ,
-        $h * 600 / 254/$scalefactor 
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
     );
 
     $transp = $imgtempblack->colorClosest( 255, 255, 255 );
     $imgtempblack->transparent($transp);
-    $imgblack->copy( $imgtempblack, 0, 0, 0, 0, $w * 600 / 254/$scalefactor ,
-        $h * 600 / 254/$scalefactor  );
+    $imgblack->copy(
+        $imgtempblack, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
 
     $imgblacktop->transparent($white);
     $imgbrowntop->transparent($white);
 
     #$img2->copy($imgyellow,0,0,0,0,$w * 600 / 254, $h * 600 / 254);
-    $imgyellow->copy( $imgmarsh, 0, 0, 0, 0, $w * 600 / 254/$scalefactor , $h * 600 / 254/$scalefactor  );
+    $imgyellow->copy(
+        $imgmarsh, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
 
     #$img2->copy($imgblue,0,0,0,0,$w * 600 / 254, $h * 600 / 254);
-    $imgblue->copy( $imgblack,    0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblue->copy( $imgbrown,    0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblue->copy( $imgblacktop, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
-    $imgblue->copy( $imgbrowntop, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+    $imgblue->copy(
+        $imgblack, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
+    $imgblue->copy(
+        $imgbrown, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
+    $imgblue->copy(
+        $imgblacktop, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
+    $imgblue->copy(
+        $imgbrowntop, 0, 0, 0, 0,
+        $w * 600 / 254 / $scalefactor,
+        $h * 600 / 254 / $scalefactor
+    );
 
     if ( -e $tempfolder . 'low.png' ) {
-        $low = newFromPng GD::Image( $tempfolder . 'low.png' );
+        $low    = newFromPng GD::Image( $tempfolder . 'low.png' );
         $transp = $low->colorClosest( 255, 255, 255 );
         $low->transparent($transp);
-        $imgyellow->copy( $low, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+        $imgyellow->copy(
+            $low, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
 
-        $high = newFromPng GD::Image( $tempfolder . 'high.png' );
+        $high   = newFromPng GD::Image( $tempfolder . 'high.png' );
         $transp = $high->colorClosest( 255, 255, 255 );
         $high->transparent($transp);
-        $imgblue->copy( $high, 0, 0, 0, 0, $w * 600 / 254/$scalefactor, $h * 600 / 254/$scalefactor );
+        $imgblue->copy(
+            $high, 0, 0, 0, 0,
+            $w * 600 / 254 / $scalefactor,
+            $h * 600 / 254 / $scalefactor
+        );
     }
 
     open( IMAGE, ">" . $tempfolder . 'low.png' );
@@ -9350,13 +9786,14 @@ sub drawshape {
     }
 
     for ( 1 .. $esfile->shapes() ) {
-        $shprec = $esfile->get_shp_record($_);
+        $shprec     = $esfile->get_shp_record($_);
         %dbfrec_org = $esfile->get_dbf_record($_);
-		undef %dbfrec;
+        undef %dbfrec;
 
-		for (keys %dbfrec_org){
-	   	   $dbfrec{trim($_)}=$dbfrec_org{$_};
-	   }
+        for ( keys %dbfrec_org ) {
+            $dbfrec{ trim($_) } = $dbfrec_org{$_};
+        }
+
         #print "#$_#$dbfrec{$_}#\n" for (keys %dbfrec);
 ##
         $roadedge  = 0;
@@ -9388,7 +9825,8 @@ sub drawshape {
 
             if (
                 (
-                    $dbfrec{'LUOKKA'} eq '12141' || $dbfrec{'LUOKKA'} eq '12314'
+                       $dbfrec{'LUOKKA'} eq '12141'
+                    || $dbfrec{'LUOKKA'} eq '12314'
                 )
                 && $dbfrec{'VERSUH'} != -11
               )
@@ -9598,7 +10036,7 @@ sub drawshape {
                 chomp($confrow);
                 ( $comment, $ISOMcode, $cond ) = split( /\|/, $confrow );
                 $ISOMcode = &trim($ISOMcode);
-                @ehdot = split( /\&/, $cond );
+                @ehdot    = split( /\&/, $cond );
 
                 foreach $ehto (@ehdot) {
 
@@ -10126,9 +10564,7 @@ sub drawshape {
                         }
                     }
 
-					
-					
-					  # black line
+                    # black line
                     if ( $ISOMcode eq '414' ) {
                         $ok = 1;
 
@@ -10188,37 +10624,37 @@ sub drawshape {
                     }
 
                     # car parking area
-					
-					if ( $ISOMcode eq '529.1' || $ISOMcode eq '301.1' ) {
-     $ok = 1;
 
-     foreach $ehto (@ehdot) {
-         ( $operator, $ehtoname, $ehtovalue ) =
-           split( /\|/, $ehto, 3 );
-         if ( $operator eq '=' ) {
-             if ( trim( $dbfrec{$ehtoname} ) ne $ehtovalue )
-             {
-                 $ok = 0;
-             }
-         }
-         else {
-             if ( trim( $dbfrec{$ehtoname} ) eq $ehtovalue )
-             {
-                 $ok = 0;
-             }
-         }
-     }
-     if ( $ok == 1 ) {
+                    if ( $ISOMcode eq '529.1' || $ISOMcode eq '301.1' ) {
+                        $ok = 1;
 
-         $imgblacktop->setThickness(2);
-         $thickness = 2;
-         $area      = 0;
-         $vari      = $black;
-         $border    = 0;
-         $image     = 'black';
-     }
- }
-					
+                        foreach $ehto (@ehdot) {
+                            ( $operator, $ehtoname, $ehtovalue ) =
+                              split( /\|/, $ehto, 3 );
+                            if ( $operator eq '=' ) {
+                                if ( trim( $dbfrec{$ehtoname} ) ne $ehtovalue )
+                                {
+                                    $ok = 0;
+                                }
+                            }
+                            else {
+                                if ( trim( $dbfrec{$ehtoname} ) eq $ehtovalue )
+                                {
+                                    $ok = 0;
+                                }
+                            }
+                        }
+                        if ( $ok == 1 ) {
+
+                            $imgblacktop->setThickness(2);
+                            $thickness = 2;
+                            $area      = 0;
+                            $vari      = $black;
+                            $border    = 0;
+                            $image     = 'black';
+                        }
+                    }
+
                     if ( $ISOMcode eq '529' ) {
                         $ok = 1;
                         foreach $ehto (@ehdot) {
@@ -10242,12 +10678,12 @@ sub drawshape {
                             $vari   = $browny;
                             $border = 0;
                             $image  = 'yellow';
-							
+
                         }
 
                     }
-					
-					   # car parking area TOP
+
+                    # car parking area TOP
                     if ( $ISOMcode eq '529T' ) {
                         $ok = 1;
                         foreach $ehto (@ehdot) {
@@ -10274,7 +10710,7 @@ sub drawshape {
                         }
 
                     }
-					
+
                 }
             }
             ## configuration based rendering end
@@ -10306,25 +10742,25 @@ sub drawshape {
                     ( $x, $y ) = @$pist;
 
                     if ( $jumpx eq '' && $area == 1 ) {
-                        $jumpx = 600 / 254/$scalefactor * ( $x - $x0 );
-                        $jumpy = 600 / 254/$scalefactor * ( $y0 - $y );
+                        $jumpx = 600 / 254 / $scalefactor * ( $x - $x0 );
+                        $jumpy = 600 / 254 / $scalefactor * ( $y0 - $y );
                     }
                     if ( $area == 1 && $count == 0 ) {
 
                         #$polyline->addPt( floor($jumpx), floor($jumpy) );
-                        $startx = 600 / 254/$scalefactor * ( $x - $x0 );
-                        $starty = 600 / 254/$scalefactor * ( $y0 - $y );
+                        $startx = 600 / 254 / $scalefactor * ( $x - $x0 );
+                        $starty = 600 / 254 / $scalefactor * ( $y0 - $y );
                     }
 
                     $polyline->addPt(
-                        floor( 600 / 254/$scalefactor * ( $x - $x0 ) ),
-                        floor( 600 / 254/$scalefactor * ( $y0 - $y ) )
+                        floor( 600 / 254 / $scalefactor * ( $x - $x0 ) ),
+                        floor( 600 / 254 / $scalefactor * ( $y0 - $y ) )
                     );
 
                     if ( $area == 1 ) {
                         $polylineborder->addPt(
-                            floor( 600 / 254/$scalefactor * ( $x - $x0 ) ),
-                            floor( 600 / 254/$scalefactor * ( $y0 - $y ) )
+                            floor( 600 / 254 / $scalefactor * ( $x - $x0 ) ),
+                            floor( 600 / 254 / $scalefactor * ( $y0 - $y ) )
                         );
                     }
                     $count++;
@@ -10839,12 +11275,12 @@ sub polylinedxfcrop() {
         $j++;
         if ( $j > 1 ) {
             ( $head, $rec ) = split( /VERTEX/, $rec, 2 );
-            @r = split( /VERTEX/, $rec );
+            @r    = split( /VERTEX/, $rec );
             $poly = 'POLYLINE' . $head;
             foreach $apu (@r) {
                 ( $apu, $pois ) = split( /SEQEND/, $apu, 2 );
                 @val = split( /\n/, $apu );
-                $i = 0;
+                $i   = 0;
                 foreach $v (@val) {
                     chomp($v);
                     if ( $v eq ' 10' ) {
@@ -10918,7 +11354,8 @@ EOF
 ';
     }
 }
-sub median { $_[0]->[ @{$_[0]} / 2 ] }
+sub median { $_[0]->[ @{ $_[0] } / 2 ] }
+
 sub trim {
     ( my $s = $_[0] ) =~ s/^\s+|\s+$//g;
     return $s;
