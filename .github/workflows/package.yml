@@ -7,7 +7,7 @@ jobs:
     name: Package macOS
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: Install Brew Items
       run: |
         brew install pkg-config gd cpanm
@@ -27,16 +27,17 @@ jobs:
         eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
         pp -x -l gd -l bz2 -l fontconfig -l freetype -l gd -l jpeg -l lzma -l png16 -l tiff -l webp -o pullauta ./pullauta.pl
     - name: Upload macOS Build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: pullauta-macos
         path: pullauta
+        if-no-files-found: error
 
   build-linux:
     name: Package Linux
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: Install Apt Items
       run: |
         sudo apt install cpanminus libgd-dev libgd-perl libperl-dev libwebp-dev
@@ -56,7 +57,8 @@ jobs:
         eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
         pp -x -l Xpm -l bz2 -l fontconfig -l freetype -l gd -l jbig -l jpeg -l lzma -l png16 -l tiff -l webp -o pullauta ./pullauta.pl
     - name: Upload Linux Build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: pullauta-linux
         path: pullauta
+        if-no-files-found: error
